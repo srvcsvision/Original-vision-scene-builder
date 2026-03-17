@@ -1,0 +1,5 @@
+{
+  "name": "Vision Scene Builder",
+  "description": "A professional-grade 3D scene visualizer and builder using Three.js and React. Create, transform, and export complex 3D scene configurations as JSON.",
+  "requestFramePermissions": []
+}

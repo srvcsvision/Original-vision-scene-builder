@@ -1,0 +1,12 @@
+export const DEFAULT_BACKGROUND_COLOR = '#0a0a0c';
+export const DEFAULT_FOV = 60;
+export const DEFAULT_ROUGHNESS = 0.5;
+export const DEFAULT_METALNESS = 0.1;
+export const DEFAULT_LIGHT_INTENSITY = 1;
+export const DEFAULT_OBJECT_COLOR = '#3b82f6';
+export const DEFAULT_LIGHT_COLOR = '#ffffff';
+export const DEFAULT_WALL_COLORS = ['#1e1e26', '#252530', '#1e1e26', '#252530'];
+export const DEFAULT_FLOOR_COLOR = '#111115';
+export const MAX_HISTORY = 50;
+export const MAX_SHADOW_LIGHTS = 2;
+export const SHADOW_MAP_SIZE = 512;
