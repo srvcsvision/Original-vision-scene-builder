@@ -110,6 +110,11 @@ export const RenderObject: React.FC<RenderObjectProps> = React.memo(({
   const useLambert = obj.type === ObjectType.PLANE;
   const showGizmo = !disableEditing && isPrimary && target && !obj.locked;
 
+  const glbLoadUrl =
+    obj.type === ObjectType.GLB
+      ? obj.modelUrl || (obj.url && !obj.url.startsWith('blob:') ? obj.url : undefined)
+      : undefined;
+
   return (
     <>
       <group
@@ -134,9 +139,9 @@ export const RenderObject: React.FC<RenderObjectProps> = React.memo(({
           <LightRenderer obj={obj} showHelper={!disableEditing} />
         )}
 
-        {obj.type === ObjectType.GLB && obj.url && (
+        {glbLoadUrl && (
           <Suspense fallback={null}>
-            <ModelLoader url={obj.url} />
+            <ModelLoader url={glbLoadUrl} />
           </Suspense>
         )}
 

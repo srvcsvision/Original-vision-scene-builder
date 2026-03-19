@@ -3,27 +3,30 @@ import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 import type { SceneObject } from '@/types';
 import { ObjectType } from '@/types';
+import { resolveGlbUrl } from '@/utils/scenePersistence';
 
 interface InstancedModelsProps {
   objects: SceneObject[];
+  uniqueGlbs?: { path: string; url: string; name: string }[];
 }
 
 /**
  * Groups GLB objects by their URL and renders instances
  * for models that appear more than once, reducing draw calls.
  */
-export const InstancedModels: React.FC<InstancedModelsProps> = React.memo(({ objects }) => {
+export const InstancedModels: React.FC<InstancedModelsProps> = React.memo(({ objects, uniqueGlbs = [] }) => {
   const grouped = useMemo(() => {
     const map = new Map<string, SceneObject[]>();
     objects.forEach((obj) => {
-      if (obj.type === ObjectType.GLB && obj.url) {
-        const group = map.get(obj.url) || [];
-        group.push(obj);
-        map.set(obj.url, group);
-      }
+      if (obj.type !== ObjectType.GLB) return;
+      const src = resolveGlbUrl(obj, uniqueGlbs);
+      if (!src) return;
+      const group = map.get(src) || [];
+      group.push(obj);
+      map.set(src, group);
     });
     return map;
-  }, [objects]);
+  }, [objects, uniqueGlbs]);
 
   return (
     <>

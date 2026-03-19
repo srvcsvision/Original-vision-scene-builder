@@ -5,6 +5,7 @@ import { listProjects } from '@/services/projectService';
 import { downloadProjectJSON } from '@/services/storageService';
 import { ensureFirebase, isFirebaseAvailable } from '@/services/firebase';
 import { Plus, RefreshCw, WifiOff } from 'lucide-react';
+import { normalizeLoadedSceneObjects } from '@/utils/scenePersistence';
 
 export const ProjectsScreen: React.FC = () => {
   const projectsList = useStore((s) => s.projectsList);
@@ -86,11 +87,7 @@ export const ProjectsScreen: React.FC = () => {
             ...(config.lights || []),
           ];
 
-          const normalized = allObjects.map((obj) => ({
-            ...obj,
-            locked: obj.locked ?? false,
-            visible: obj.visible ?? true,
-          }));
+          const normalized = normalizeLoadedSceneObjects(allObjects, config.uniqueGlbs || []);
 
           setObjects(normalized);
         } else {

@@ -2,6 +2,7 @@ import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { useStore } from '@/stores/useStore';
 import { ObjectType } from '@/types';
 import type { SceneConfig } from '@/types';
+import { normalizeLoadedSceneObjects, sanitizeGlbForPersistence } from '@/utils/scenePersistence';
 import { ToolbarButton } from './ToolbarButton';
 import { saveProject, quickSave } from '@/services/projectSaver';
 import type { SaveProgress } from '@/services/projectSaver';
@@ -301,12 +302,15 @@ export const Toolbar: React.FC = () => {
   };
 
   const handleExportProject = () => {
+    const meshExport = objects
+      .filter((o) => !o.type.includes('light'))
+      .map((o) => sanitizeGlbForPersistence(o));
     const config: SceneConfig = {
       version: version || 1,
       backgroundColor,
       showGrid,
       lights: objects.filter((o) => o.type.includes('light')),
-      objects: objects.filter((o) => !o.type.includes('light')),
+      objects: meshExport,
       uniqueGlbs: [],
     };
     const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
@@ -327,7 +331,7 @@ export const Toolbar: React.FC = () => {
         const config = JSON.parse(ev.target?.result as string) as SceneConfig;
         loadSceneConfig(config.backgroundColor, config.showGrid, config.version);
         const allObjects = [...(config.objects || []), ...(config.lights || [])];
-        setObjects(allObjects);
+        setObjects(normalizeLoadedSceneObjects(allObjects, config.uniqueGlbs || []));
         clearSelection();
       } catch (err) {
         console.error('Error importing project:', err);

@@ -59,6 +59,10 @@ export interface SceneObject {
   modalTitle?: string;
   modalDescription?: string;
 
+  // Wall assignment
+  wallLabel?: string;
+  wallPosition?: number;
+
   // Grouping
   groupId?: string;
 }

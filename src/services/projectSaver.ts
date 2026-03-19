@@ -1,5 +1,6 @@
 import { useStore } from '@/stores/useStore';
 import type { SceneConfig, UniqueGlb } from '@/types';
+import { sanitizeGlbForPersistence } from '@/utils/scenePersistence';
 import { sha256 } from '@/utils/hash';
 import { uploadProjectJSON, uploadGLB } from './storageService';
 import { saveProjectMeta } from './projectService';
@@ -68,12 +69,17 @@ export async function saveProject(name?: string, onProgress?: ProgressCallback):
       step: 'Subiendo configuración JSON…',
     });
 
+    const freshObjects = useStore.getState().objects;
+    const meshObjects = freshObjects
+      .filter((o) => !o.type.includes('light'))
+      .map((o) => sanitizeGlbForPersistence(o));
+
     const config: SceneConfig = {
       version: version || 1,
       backgroundColor,
       showGrid,
-      lights: objects.filter((o) => o.type.includes('light')),
-      objects: objects.filter((o) => !o.type.includes('light')),
+      lights: freshObjects.filter((o) => o.type.includes('light')),
+      objects: meshObjects,
       uniqueGlbs,
     };
 
@@ -120,12 +126,16 @@ export async function quickSave(onProgress?: ProgressCallback): Promise<boolean>
   try {
     onProgress?.({ percent: 0, step: 'Preparando JSON…' });
 
+    const meshObjectsQuick = objects
+      .filter((o) => !o.type.includes('light'))
+      .map((o) => sanitizeGlbForPersistence(o));
+
     const config: SceneConfig = {
       version: version || 1,
       backgroundColor,
       showGrid,
       lights: objects.filter((o) => o.type.includes('light')),
-      objects: objects.filter((o) => !o.type.includes('light')),
+      objects: meshObjectsQuick,
       uniqueGlbs: [],
     };
 
