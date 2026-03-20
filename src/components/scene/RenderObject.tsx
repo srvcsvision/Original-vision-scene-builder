@@ -10,7 +10,7 @@ interface RenderObjectProps {
   obj: SceneObject;
   isSelected: boolean;
   isPrimary: boolean;
-  onSelect: (id: string, multiSelect: boolean) => void;
+  onSelect: (id: string, multiSelect: boolean, groupSelect: boolean) => void;
   onUpdateTransform: (id: string, pos: [number, number, number], rot: [number, number, number], sca: [number, number, number]) => void;
   onObjectClick?: (obj: SceneObject) => void;
   onAltClick?: (point: [number, number, number], clickedObjId?: string) => void;
@@ -96,7 +96,6 @@ export const RenderObject: React.FC<RenderObjectProps> = React.memo(({
       return;
     }
 
-    if (obj.locked && !disableEditing) return;
     if (disableEditing) {
       if (obj.clickable) {
         onObjectClick?.(obj);
@@ -104,15 +103,15 @@ export const RenderObject: React.FC<RenderObjectProps> = React.memo(({
       return;
     }
     const multiSelect = e.ctrlKey || e.metaKey;
-    onSelect(obj.id, multiSelect);
+    onSelect(obj.id, multiSelect, e.shiftKey);
   };
 
   const useLambert = obj.type === ObjectType.PLANE;
-  const showGizmo = !disableEditing && isPrimary && target && !obj.locked;
+  const showGizmo = !disableEditing && isPrimary && target;
 
   const glbLoadUrl =
     obj.type === ObjectType.GLB
-      ? obj.modelUrl || (obj.url && !obj.url.startsWith('blob:') ? obj.url : undefined)
+      ? obj.modelUrl || obj.url || undefined
       : undefined;
 
   return (

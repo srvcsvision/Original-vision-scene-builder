@@ -5,7 +5,7 @@ import { SceneHierarchyItem } from './SceneHierarchyItem';
 import { CollapsibleSection } from '@/components/panels/CollapsibleSection';
 import { Plus, Play, X, ChevronRight, ChevronDown } from 'lucide-react';
 
-interface GlbGroup {
+interface ObjectGroup {
   wallId: string;
   wallName: string;
   members: SceneObject[];
@@ -27,36 +27,38 @@ export const SceneHierarchyLeft: React.FC = () => {
 
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
 
-  const { planes, glbGroups, ungroupedGlbs, lights, others } = useMemo(() => {
-    const planes = objects.filter((o) => o.type === ObjectType.PLANE);
-    const allGlbs = objects.filter((o) => o.type === ObjectType.GLB);
-    const lights = objects.filter((o) => o.type.includes('light'));
-    const others = objects.filter(
-      (o) => o.type !== ObjectType.PLANE && o.type !== ObjectType.GLB && !o.type.includes('light')
-    );
-
-    const groupMap = new Map<string, GlbGroup>();
+  const { planes, groups, ungroupedGlbs, lights, others } = useMemo(() => {
+    const planes: SceneObject[] = [];
+    const lights: SceneObject[] = [];
+    const others: SceneObject[] = [];
     const ungroupedGlbs: SceneObject[] = [];
+    const groupMap = new Map<string, ObjectGroup>();
 
-    for (const glb of allGlbs) {
-      if (glb.groupId) {
-        if (!groupMap.has(glb.groupId)) {
-          const wall = objects.find((o) => o.id === glb.groupId);
-          groupMap.set(glb.groupId, {
-            wallId: glb.groupId,
+    for (const o of objects) {
+      if (o.groupId) {
+        if (!groupMap.has(o.groupId)) {
+          const wall = objects.find((w) => w.id === o.groupId);
+          groupMap.set(o.groupId, {
+            wallId: o.groupId,
             wallName: wall?.name || 'Grupo',
             members: [],
           });
         }
-        groupMap.get(glb.groupId)!.members.push(glb);
+        groupMap.get(o.groupId)!.members.push(o);
+      } else if (o.type === ObjectType.PLANE) {
+        planes.push(o);
+      } else if (o.type === ObjectType.GLB) {
+        ungroupedGlbs.push(o);
+      } else if (o.type.includes('light')) {
+        lights.push(o);
       } else {
-        ungroupedGlbs.push(glb);
+        others.push(o);
       }
     }
 
-    const glbGroups = Array.from(groupMap.values());
+    const groups = Array.from(groupMap.values());
 
-    return { planes, glbGroups, ungroupedGlbs, lights, others };
+    return { planes, groups, ungroupedGlbs, lights, others };
   }, [objects]);
 
   const handleDelete = useCallback(
@@ -149,10 +151,10 @@ export const SceneHierarchyLeft: React.FC = () => {
               </CollapsibleSection>
             )}
 
-            {(glbGroups.length > 0 || ungroupedGlbs.length > 0) && (
-              <CollapsibleSection title="Modelos GLB">
+            {(groups.length > 0 || ungroupedGlbs.length > 0) && (
+              <CollapsibleSection title="Grupos / GLB">
                 <div className="space-y-2">
-                  {glbGroups.map((group) => {
+                  {groups.map((group) => {
                     const isExpanded = !collapsedGroups.has(group.wallId);
                     const memberIds = group.members.map((m) => m.id);
                     const allSelected =
@@ -202,7 +204,7 @@ export const SceneHierarchyLeft: React.FC = () => {
                   })}
                   {ungroupedGlbs.length > 0 && (
                     <div className="space-y-1">
-                      {glbGroups.length > 0 && (
+                      {groups.length > 0 && (
                         <div className="text-[9px] font-bold text-gray-600 uppercase tracking-widest px-1 mt-1">
                           Sin grupo
                         </div>

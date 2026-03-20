@@ -38,9 +38,7 @@ export const useGroups = () => {
       const wall = objects.find((o) => o.id === wallId);
       if (!wall) return;
 
-      const members = objects.filter(
-        (o) => o.groupId === wallId && o.type === ObjectType.GLB
-      );
+      const members = objects.filter((o) => o.groupId === wallId);
       if (members.length === 0) return;
 
       saveSnapshot(objects);
@@ -77,9 +75,7 @@ export const useGroups = () => {
 
   const scaleGroup = useCallback(
     (wallId: string, factor: number) => {
-      const members = objects.filter(
-        (o) => o.groupId === wallId && o.type === ObjectType.GLB
-      );
+      const members = objects.filter((o) => o.groupId === wallId);
       if (members.length === 0) return;
 
       saveSnapshot(objects);
@@ -101,9 +97,7 @@ export const useGroups = () => {
 
   const rotateGroup = useCallback(
     (wallId: string, axis: 'x' | 'y' | 'z') => {
-      const members = objects.filter(
-        (o) => o.groupId === wallId && o.type === ObjectType.GLB
-      );
+      const members = objects.filter((o) => o.groupId === wallId);
       if (members.length === 0) return;
 
       saveSnapshot(objects);
@@ -122,9 +116,7 @@ export const useGroups = () => {
 
   const mirrorGroup = useCallback(
     (wallId: string, axis: 'x' | 'y' | 'z') => {
-      const members = objects.filter(
-        (o) => o.groupId === wallId && o.type === ObjectType.GLB
-      );
+      const members = objects.filter((o) => o.groupId === wallId);
       if (members.length === 0) return;
 
       saveSnapshot(objects);

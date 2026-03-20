@@ -267,6 +267,7 @@ export const Toolbar: React.FC = () => {
     files.forEach((file) => {
       const id = crypto.randomUUID();
       const position: [number, number, number] = [0, 0, 0];
+      const blobUrl = URL.createObjectURL(file);
       addObject({
         id,
         name: file.name,
@@ -277,7 +278,7 @@ export const Toolbar: React.FC = () => {
         locked: false,
         roughness: DEFAULT_ROUGHNESS,
         metalness: DEFAULT_METALNESS,
-        url: URL.createObjectURL(file),
+        url: blobUrl,
         groupId,
         clickable: true,
         modalTitle: 'Storytelling Visual',

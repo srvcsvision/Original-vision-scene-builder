@@ -99,14 +99,21 @@ export const useKeyboardShortcuts = () => {
         e.preventDefault();
         saveSnapshot(objects);
         const selected = objects.filter((o) => selectedIds.includes(o.id));
-        let lastId = '';
+        const groupRemap = new Map<string, string>();
+        const newIds: string[] = [];
         selected.forEach((obj) => {
           const id = crypto.randomUUID();
-          lastId = id;
+          newIds.push(id);
+          let newGroupId = obj.groupId;
+          if (obj.groupId) {
+            if (!groupRemap.has(obj.groupId)) groupRemap.set(obj.groupId, crypto.randomUUID());
+            newGroupId = groupRemap.get(obj.groupId);
+          }
           addObject({
             ...JSON.parse(JSON.stringify(obj)),
             id,
             name: `${obj.name} (copia)`,
+            groupId: newGroupId,
             transform: {
               ...obj.transform,
               position: [
@@ -117,7 +124,7 @@ export const useKeyboardShortcuts = () => {
             },
           });
         });
-        if (lastId) selectSingle(lastId);
+        if (newIds.length > 0) selectSingle(newIds[newIds.length - 1]);
         return;
       }
 
@@ -142,14 +149,21 @@ export const useKeyboardShortcuts = () => {
       if (mod && e.key === 'v' && copiedObjects.length > 0) {
         e.preventDefault();
         saveSnapshot(objects);
-        let lastId = '';
+        const groupRemap = new Map<string, string>();
+        const newIds: string[] = [];
         copiedObjects.forEach((copied) => {
           const id = crypto.randomUUID();
-          lastId = id;
+          newIds.push(id);
+          let newGroupId = copied.groupId;
+          if (copied.groupId) {
+            if (!groupRemap.has(copied.groupId)) groupRemap.set(copied.groupId, crypto.randomUUID());
+            newGroupId = groupRemap.get(copied.groupId);
+          }
           addObject({
             ...copied,
             id,
             name: `${copied.name} (copia)`,
+            groupId: newGroupId,
             transform: {
               ...copied.transform,
               position: [
@@ -160,7 +174,7 @@ export const useKeyboardShortcuts = () => {
             },
           });
         });
-        if (lastId) selectSingle(lastId);
+        if (newIds.length > 0) selectSingle(newIds[newIds.length - 1]);
         return;
       }
 

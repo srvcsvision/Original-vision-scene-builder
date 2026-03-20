@@ -129,7 +129,6 @@ export const SceneCanvas: React.FC = () => {
         const initial = initialTransformsRef.current.get(otherId);
         if (!initial) continue;
         const otherObj = objects.find((o) => o.id === otherId);
-        if (otherObj?.locked) continue;
 
         const relPos = new THREE.Vector3(...initial.position).sub(pivotOld);
         relPos.applyQuaternion(deltaQuat);
@@ -163,15 +162,27 @@ export const SceneCanvas: React.FC = () => {
     [isPreview, setSelectedId, setActiveModalObjectId]
   );
 
+  const selectMultiple = useStore((s) => s.selectMultiple);
+
   const handleSelect = useCallback(
-    (id: string, multiSelect: boolean) => {
+    (id: string, multiSelect: boolean, groupSelect: boolean) => {
+      if (groupSelect) {
+        const obj = objects.find((o) => o.id === id);
+        if (obj?.groupId) {
+          const memberIds = objects.filter((o) => o.groupId === obj.groupId).map((o) => o.id);
+          selectMultiple(memberIds);
+        } else {
+          selectSingle(id);
+        }
+        return;
+      }
       if (multiSelect) {
         toggleSelection(id);
       } else {
         selectSingle(id);
       }
     },
-    [selectSingle, toggleSelection]
+    [objects, selectSingle, toggleSelection, selectMultiple]
   );
 
   const handleAltClick = useCallback(

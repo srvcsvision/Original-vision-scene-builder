@@ -34,6 +34,7 @@ const SECTIONS = [
     shortcuts: [
       { keys: ['Click'], desc: 'Seleccionar objeto' },
       { keys: [`${MOD}+Click`], desc: 'Multi-selección' },
+      { keys: ['⇧+Click'], desc: 'Seleccionar grupo completo' },
       { keys: ['Enter'], desc: 'Deseleccionar / Listo' },
       { keys: ['Escape'], desc: 'Cerrar modal / Deseleccionar' },
     ],

@@ -9,13 +9,13 @@ export const MetadataPanel: React.FC = () => {
   const objects = useStore((s) => s.objects);
   const updateObject = useStore((s) => s.updateObject);
 
-  const obj = objects.find((o) => o.id === selectedIds[0]);
-  if (!obj || obj.type !== ObjectType.GLB) return null;
-
   const walls = useMemo(
     () => objects.filter((o) => o.type === ObjectType.PLANE && o.name?.toLowerCase().includes('pared')),
     [objects],
   );
+
+  const obj = objects.find((o) => o.id === selectedIds[0]);
+  if (!obj || obj.type !== ObjectType.GLB) return null;
 
   return (
     <CollapsibleSection title="Metadatos">

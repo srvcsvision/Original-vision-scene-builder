@@ -20,11 +20,18 @@ export const MultiSelectionPanel: React.FC = () => {
 
   const handleDuplicateAll = () => {
     saveSnapshot(objects);
+    const groupRemap = new Map<string, string>();
     selectedObjects.forEach((obj) => {
+      let newGroupId = obj.groupId;
+      if (obj.groupId) {
+        if (!groupRemap.has(obj.groupId)) groupRemap.set(obj.groupId, crypto.randomUUID());
+        newGroupId = groupRemap.get(obj.groupId);
+      }
       addObject({
         ...JSON.parse(JSON.stringify(obj)),
         id: crypto.randomUUID(),
         name: `${obj.name} (copia)`,
+        groupId: newGroupId,
         transform: {
           ...obj.transform,
           position: [
