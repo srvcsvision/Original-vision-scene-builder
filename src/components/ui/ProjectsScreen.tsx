@@ -1,10 +1,10 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useStore } from '@/stores/useStore';
 import { ProjectCard } from './ProjectCard';
-import { listProjects } from '@/services/projectService';
+import { listProjects, renameProject } from '@/services/projectService';
 import { downloadProjectJSON } from '@/services/storageService';
 import { ensureFirebase, isFirebaseAvailable } from '@/services/firebase';
-import { Plus, RefreshCw, WifiOff } from 'lucide-react';
+import { Plus, RefreshCw, WifiOff, ArrowLeft } from 'lucide-react';
 import { normalizeLoadedSceneObjects } from '@/utils/scenePersistence';
 
 export const ProjectsScreen: React.FC = () => {
@@ -16,6 +16,7 @@ export const ProjectsScreen: React.FC = () => {
   const loadSceneConfig = useStore((s) => s.loadSceneConfig);
   const clearHistory = useStore((s) => s.clearHistory);
   const clearObjects = useStore((s) => s.clearObjects);
+  const projectId = useStore((s) => s.projectId);
 
   const [loading, setLoading] = useState(true);
   const [loadingProject, setLoadingProject] = useState<string | null>(null);
@@ -105,9 +106,28 @@ export const ProjectsScreen: React.FC = () => {
     }
   };
 
+  const handleRenameProject = useCallback(async (id: string, newName: string) => {
+    const ok = await renameProject(id, newName);
+    if (ok) {
+      setProjectsList(
+        projectsList.map((p) => (p.id === id ? { ...p, name: newName } : p))
+      );
+    }
+  }, [projectsList, setProjectsList]);
+
   return (
     <div className="min-h-screen bg-[#050505] text-white flex flex-col items-center justify-center p-6">
       <div className="w-full max-w-xl space-y-10 animate-in fade-in duration-700">
+        {projectId && (
+          <button
+            onClick={() => setCurrentView('editor')}
+            className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors group"
+          >
+            <ArrowLeft size={16} className="group-hover:-translate-x-0.5 transition-transform" />
+            Volver al editor
+          </button>
+        )}
+
         <div className="text-center space-y-2">
           <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight">Vision Studio</h1>
           <p className="text-gray-500 text-sm">Elige un proyecto o crea uno nuevo</p>
@@ -151,7 +171,7 @@ export const ProjectsScreen: React.FC = () => {
             </div>
             {projectsList.map((project) => (
               <div key={project.id} className="relative">
-                <ProjectCard project={project} onClick={handleOpenProject} />
+                <ProjectCard project={project} onClick={handleOpenProject} onRename={handleRenameProject} />
                 {loadingProject === project.id && (
                   <div className="absolute inset-0 bg-black/50 backdrop-blur-sm rounded-2xl flex items-center justify-center">
                     <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />

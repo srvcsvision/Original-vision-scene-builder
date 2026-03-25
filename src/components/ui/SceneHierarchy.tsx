@@ -3,7 +3,8 @@ import { useStore } from '@/stores/useStore';
 import { ObjectType, SceneObject } from '@/types';
 import { SceneHierarchyItem } from './SceneHierarchyItem';
 import { CollapsibleSection } from '@/components/panels/CollapsibleSection';
-import { Plus, Play, X, ChevronRight, ChevronDown } from 'lucide-react';
+import { Plus, Play, X, ChevronRight, ChevronDown, ZoomIn, ZoomOut, Crosshair } from 'lucide-react';
+import { useGroups } from '@/hooks/useGroups';
 
 interface ObjectGroup {
   wallId: string;
@@ -25,6 +26,7 @@ export const SceneHierarchyLeft: React.FC = () => {
   const isPreview = useStore((s) => s.isPreview);
   const enterPreview = useStore((s) => s.enterPreview);
 
+  const { scaleGroup, recenterGroupPivot } = useGroups();
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
 
   const { planes, groups, ungroupedGlbs, lights, others } = useMemo(() => {
@@ -57,6 +59,9 @@ export const SceneHierarchyLeft: React.FC = () => {
     }
 
     const groups = Array.from(groupMap.values());
+    groups.forEach((g) =>
+      g.members.sort((a, b) => (a.wallPosition ?? Infinity) - (b.wallPosition ?? Infinity))
+    );
 
     return { planes, groups, ungroupedGlbs, lights, others };
   }, [objects]);
@@ -182,6 +187,27 @@ export const SceneHierarchyLeft: React.FC = () => {
                             }`}
                           >
                             {group.wallName} ({group.members.length})
+                          </button>
+                          <button
+                            onClick={() => recenterGroupPivot(group.wallId)}
+                            className="p-0.5 hover:bg-white/10 rounded transition-colors flex-shrink-0"
+                            title="Recentrar eje al centro de los objetos"
+                          >
+                            <Crosshair size={12} className="text-gray-500" />
+                          </button>
+                          <button
+                            onClick={() => scaleGroup(group.wallId, 0.9)}
+                            className="p-0.5 hover:bg-white/10 rounded transition-colors flex-shrink-0"
+                            title="Reducir grupo (−10%)"
+                          >
+                            <ZoomOut size={12} className="text-gray-500" />
+                          </button>
+                          <button
+                            onClick={() => scaleGroup(group.wallId, 1.1)}
+                            className="p-0.5 hover:bg-white/10 rounded transition-colors flex-shrink-0"
+                            title="Agrandar grupo (+10%)"
+                          >
+                            <ZoomIn size={12} className="text-gray-500" />
                           </button>
                         </div>
                         {isExpanded && (

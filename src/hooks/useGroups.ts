@@ -1,35 +1,62 @@
 import { useCallback } from 'react';
+import * as THREE from 'three';
 import { useStore } from '@/stores/useStore';
 import { ObjectType } from '@/types';
+import type { SceneObject } from '@/types';
 
 export const useGroups = () => {
   const objects = useStore((s) => s.objects);
   const updateObject = useStore((s) => s.updateObject);
   const saveSnapshot = useStore((s) => s.saveSnapshot);
 
-  const assignToNearestWall = useCallback(() => {
+  const assignAllToNearestWall = useCallback(() => {
     const walls = objects.filter((o) => o.type === ObjectType.PLANE && o.name.includes('Pared'));
-    const glbs = objects.filter((o) => o.type === ObjectType.GLB && !o.groupId);
+    const glbs = objects.filter((o) => o.type === ObjectType.GLB);
 
-    if (walls.length === 0) return;
+    if (walls.length === 0 || glbs.length === 0) return;
 
     saveSnapshot(objects);
-    glbs.forEach((glb) => {
-      let minDist = Infinity;
-      let nearestWallId = walls[0].id;
 
+    const locked = glbs.filter((o) => o.locked);
+    locked.forEach((obj) => {
+      updateObject(obj.id, { groupId: undefined, wallLabel: undefined, wallPosition: undefined });
+    });
+
+    const unlocked = glbs.filter((o) => !o.locked);
+    const wallBuckets = new Map<string, { wall: SceneObject; items: { obj: SceneObject; dist: number }[] }>();
+    walls.forEach((wall) => wallBuckets.set(wall.id, { wall, items: [] }));
+
+    unlocked.forEach((glb) => {
+      let minDist = Infinity;
+      let nearestId = walls[0].id;
       walls.forEach((wall) => {
         const dx = glb.transform.position[0] - wall.transform.position[0];
         const dy = glb.transform.position[1] - wall.transform.position[1];
         const dz = glb.transform.position[2] - wall.transform.position[2];
         const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
-        if (dist < minDist) {
-          minDist = dist;
-          nearestWallId = wall.id;
-        }
+        if (dist < minDist) { minDist = dist; nearestId = wall.id; }
+      });
+      wallBuckets.get(nearestId)!.items.push({ obj: glb, dist: minDist });
+    });
+
+    wallBuckets.forEach(({ wall, items }) => {
+      const name = wall.name.toLowerCase();
+      const sortByX = name.includes('frontal') || name.includes('trasera');
+
+      items.sort((a, b) => {
+        const axis = sortByX
+          ? a.obj.transform.position[0] - b.obj.transform.position[0]
+          : a.obj.transform.position[2] - b.obj.transform.position[2];
+        return axis !== 0 ? axis : a.dist - b.dist;
       });
 
-      updateObject(glb.id, { groupId: nearestWallId });
+      items.forEach(({ obj }, idx) => {
+        updateObject(obj.id, {
+          groupId: wall.id,
+          wallLabel: wall.name,
+          wallPosition: idx + 1,
+        });
+      });
     });
   }, [objects, updateObject, saveSnapshot]);
 
@@ -79,10 +106,26 @@ export const useGroups = () => {
       if (members.length === 0) return;
 
       saveSnapshot(objects);
+
+      let cx = 0, cy = 0, cz = 0;
+      members.forEach((m) => {
+        cx += m.transform.position[0];
+        cy += m.transform.position[1];
+        cz += m.transform.position[2];
+      });
+      cx /= members.length;
+      cy /= members.length;
+      cz /= members.length;
+
       members.forEach((m) => {
         updateObject(m.id, {
           transform: {
             ...m.transform,
+            position: [
+              cx + (m.transform.position[0] - cx) * factor,
+              cy + (m.transform.position[1] - cy) * factor,
+              cz + (m.transform.position[2] - cz) * factor,
+            ],
             scale: [
               m.transform.scale[0] * factor,
               m.transform.scale[1] * factor,
@@ -137,5 +180,68 @@ export const useGroups = () => {
     [objects, updateObject, saveSnapshot]
   );
 
-  return { assignToNearestWall, centerGroupOnWall, scaleGroup, rotateGroup, mirrorGroup };
+  const recenterGroupPivot = useCallback(
+    (groupId: string) => {
+      const members = objects.filter((o) => o.groupId === groupId);
+      if (members.length === 0) return;
+
+      const scene = (window as any).__R3F_SCENE__ as THREE.Scene | undefined;
+      if (!scene) return;
+
+      saveSnapshot(objects);
+
+      for (const member of members) {
+        let threeObj: THREE.Object3D | null = null;
+        scene.traverse((child: THREE.Object3D) => {
+          if (child.userData?.sceneObjectId === member.id) {
+            threeObj = child;
+          }
+        });
+
+        if (!threeObj) continue;
+
+        const box = new THREE.Box3().setFromObject(threeObj);
+        if (box.isEmpty()) continue;
+
+        const bbCenter = new THREE.Vector3();
+        box.getCenter(bbCenter);
+
+        const pos = member.transform.position;
+        const deltaWorld = new THREE.Vector3(
+          bbCenter.x - pos[0],
+          bbCenter.y - pos[1],
+          bbCenter.z - pos[2],
+        );
+
+        if (deltaWorld.lengthSq() < 0.000001) continue;
+
+        const invQuat = new THREE.Quaternion()
+          .setFromEuler(new THREE.Euler(...member.transform.rotation))
+          .invert();
+        const deltaLocal = deltaWorld.clone().applyQuaternion(invQuat);
+
+        const [sx, sy, sz] = member.transform.scale;
+        deltaLocal.x /= sx || 1;
+        deltaLocal.y /= sy || 1;
+        deltaLocal.z /= sz || 1;
+
+        const cur = member.meshOffset || [0, 0, 0];
+
+        updateObject(member.id, {
+          transform: {
+            ...member.transform,
+            position: [bbCenter.x, bbCenter.y, bbCenter.z],
+          },
+          meshOffset: [
+            cur[0] - deltaLocal.x,
+            cur[1] - deltaLocal.y,
+            cur[2] - deltaLocal.z,
+          ] as [number, number, number],
+        });
+      }
+    },
+    [objects, updateObject, saveSnapshot],
+  );
+
+  return { assignAllToNearestWall, centerGroupOnWall, scaleGroup, rotateGroup, mirrorGroup, recenterGroupPivot };
 };

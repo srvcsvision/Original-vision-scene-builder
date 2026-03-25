@@ -1,4 +1,4 @@
-import React, { Suspense, useRef, useEffect, useState } from 'react';
+import React, { Suspense, useRef, useEffect, useState, useMemo } from 'react';
 import { TransformControls, useTexture } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
@@ -140,7 +140,9 @@ export const RenderObject: React.FC<RenderObjectProps> = React.memo(({
 
         {glbLoadUrl && (
           <Suspense fallback={null}>
-            <ModelLoader url={glbLoadUrl} />
+            <group position={obj.meshOffset}>
+              <ModelLoader url={glbLoadUrl} />
+            </group>
           </Suspense>
         )}
 
@@ -164,7 +166,7 @@ export const RenderObject: React.FC<RenderObjectProps> = React.memo(({
                 />
               </Suspense>
             ) : useLambert ? (
-              <meshLambertMaterial color={obj.color} />
+              <GridPlaneMaterial color={obj.color} />
             ) : (
               <meshStandardMaterial
                 color={obj.color}
@@ -205,4 +207,42 @@ const TexturedMaterial: React.FC<{
       metalness={metalness}
     />
   );
+};
+
+const GRID_DIVISIONS = 10;
+const GRID_TEX_SIZE = 512;
+
+const GridPlaneMaterial: React.FC<{ color: string }> = ({ color }) => {
+  const texture = useMemo(() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = GRID_TEX_SIZE;
+    canvas.height = GRID_TEX_SIZE;
+    const ctx = canvas.getContext('2d')!;
+
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, GRID_TEX_SIZE, GRID_TEX_SIZE);
+
+    const cellSize = GRID_TEX_SIZE / GRID_DIVISIONS;
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.45)';
+    ctx.lineWidth = 2.5;
+
+    for (let i = 0; i <= GRID_DIVISIONS; i++) {
+      const pos = i * cellSize;
+      ctx.beginPath();
+      ctx.moveTo(pos, 0);
+      ctx.lineTo(pos, GRID_TEX_SIZE);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(0, pos);
+      ctx.lineTo(GRID_TEX_SIZE, pos);
+      ctx.stroke();
+    }
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.minFilter = THREE.LinearMipmapLinearFilter;
+    tex.magFilter = THREE.LinearFilter;
+    return tex;
+  }, []);
+
+  return <meshLambertMaterial color="#ffffff" map={texture} />;
 };

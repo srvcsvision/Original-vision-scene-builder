@@ -2,14 +2,14 @@ import React, { useState, useMemo } from 'react';
 import { useStore } from '@/stores/useStore';
 import { useGroups } from '@/hooks/useGroups';
 import { CollapsibleSection } from './CollapsibleSection';
-import { AlignCenter, Scaling, RotateCcw, FlipHorizontal, Ungroup } from 'lucide-react';
+import { AlignCenter, Crosshair, Scaling, RotateCcw, FlipHorizontal, Ungroup } from 'lucide-react';
 
 export const GroupPanel: React.FC = () => {
   const selectedIds = useStore((s) => s.selectedIds);
   const objects = useStore((s) => s.objects);
   const updateObject = useStore((s) => s.updateObject);
   const saveSnapshot = useStore((s) => s.saveSnapshot);
-  const { centerGroupOnWall, scaleGroup, rotateGroup, mirrorGroup } = useGroups();
+  const { centerGroupOnWall, scaleGroup, rotateGroup, mirrorGroup, recenterGroupPivot } = useGroups();
   const [scaleFactor, setScaleFactor] = useState('1.5');
 
   const obj = objects.find((o) => o.id === selectedIds[0]);
@@ -65,6 +65,13 @@ export const GroupPanel: React.FC = () => {
             <Ungroup size={12} /> Disolver grupo
           </button>
         </div>
+
+        <button
+          onClick={() => recenterGroupPivot(groupId)}
+          className="w-full flex items-center justify-center gap-2 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs font-bold text-gray-300 transition-all"
+        >
+          <Crosshair size={12} /> Recentrar eje al centro de objetos
+        </button>
 
         <button
           onClick={() => centerGroupOnWall(groupId)}

@@ -65,6 +65,9 @@ export interface SceneObject {
 
   // Grouping
   groupId?: string;
+
+  // Pivot offset (used to keep visuals in place after recentering)
+  meshOffset?: [number, number, number];
 }
 
 export interface UniqueGlb {

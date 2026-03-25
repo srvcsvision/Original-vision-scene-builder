@@ -50,6 +50,25 @@ export async function saveProjectMeta(meta: ProjectMeta): Promise<void> {
   }
 }
 
+export async function renameProject(projectId: string, newName: string): Promise<boolean> {
+  try {
+    const ready = await ensureFirebase();
+    if (!ready) return false;
+
+    const db = getDb();
+    if (!db) return false;
+
+    const snapshot = await get(ref(db, `projects/${projectId}`));
+    if (!snapshot.exists()) return false;
+
+    await set(ref(db, `projects/${projectId}/name`), newName);
+    return true;
+  } catch (err) {
+    console.error('Error renaming project:', err);
+    return false;
+  }
+}
+
 export async function deleteProject(projectId: string): Promise<void> {
   try {
     const ready = await ensureFirebase();
