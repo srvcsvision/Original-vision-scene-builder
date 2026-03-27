@@ -67,11 +67,23 @@ const SECTIONS = [
     title: 'Vista / Paneles',
     shortcuts: [
       { keys: ['G'], desc: 'Mostrar/ocultar Grid' },
+      { keys: ['I'], desc: 'Activar/desactivar luces' },
       { keys: ['P'], desc: 'Toggle propiedades' },
       { keys: ['L'], desc: 'Toggle sidebar izq.' },
       { keys: ['H'], desc: 'Ocultar/mostrar objeto' },
       { keys: ['F'], desc: 'Pantalla completa' },
       { keys: [`${MOD}+E`], desc: 'Modo Edición / Recorrido' },
+    ],
+  },
+  {
+    title: 'Enfocar Pared',
+    shortcuts: [
+      { keys: [`${MOD}+P → 1`], desc: 'Pared 1' },
+      { keys: [`${MOD}+P → 2`], desc: 'Pared 2' },
+      { keys: [`${MOD}+P → 3`], desc: 'Pared 3' },
+      { keys: [`${MOD}+P → 4`], desc: 'Pared 4' },
+      { keys: [`${MOD}+P → 5`], desc: 'Pared 5' },
+      { keys: [`${MOD}+P → 6`], desc: 'Pared 6' },
     ],
   },
   {

@@ -17,6 +17,7 @@ interface RenderObjectProps {
   transformMode: TransformMode;
   setIsDragging: (val: boolean) => void;
   disableEditing: boolean;
+  lightsEnabled?: boolean;
 }
 
 const isLightType = (type: ObjectType) =>
@@ -39,7 +40,7 @@ const PULSE_DURATION = 0.6;
 
 export const RenderObject: React.FC<RenderObjectProps> = React.memo(({
   obj, isSelected, isPrimary, onSelect, onUpdateTransform, onObjectClick, onAltClick,
-  transformMode, setIsDragging, disableEditing,
+  transformMode, setIsDragging, disableEditing, lightsEnabled = true,
 }) => {
   const groupRef = useRef<THREE.Group>(null);
   const [target, setTarget] = useState<THREE.Object3D | null>(null);
@@ -135,13 +136,13 @@ export const RenderObject: React.FC<RenderObjectProps> = React.memo(({
         onClick={handleClick}
       >
         {isLightType(obj.type) && (
-          <LightRenderer obj={obj} showHelper={!disableEditing} />
+          <LightRenderer obj={obj} showHelper={!disableEditing} lightsEnabled={lightsEnabled} />
         )}
 
         {glbLoadUrl && (
           <Suspense fallback={null}>
             <group position={obj.meshOffset}>
-              <ModelLoader url={glbLoadUrl} />
+              <ModelLoader url={glbLoadUrl} castShadow={obj.castShadow !== false} />
             </group>
           </Suspense>
         )}
@@ -154,7 +155,7 @@ export const RenderObject: React.FC<RenderObjectProps> = React.memo(({
         )}
 
         {!isLightType(obj.type) && obj.type !== ObjectType.GLB && obj.type !== ObjectType.CAMERA && (
-          <mesh castShadow receiveShadow>
+          <mesh castShadow={obj.castShadow !== false} receiveShadow>
             {getGeometry(obj.type)}
             {obj.textureUrl ? (
               <Suspense fallback={<meshStandardMaterial color={obj.color} />}>

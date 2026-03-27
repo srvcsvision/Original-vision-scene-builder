@@ -2,7 +2,13 @@ import React, { useRef } from 'react';
 import { useStore } from '@/stores/useStore';
 import { ObjectType } from '@/types';
 import { CollapsibleSection } from './CollapsibleSection';
-import { Lock, Unlock, Eye, EyeOff, Copy, Trash2, RefreshCw } from 'lucide-react';
+import { Lock, Unlock, Eye, EyeOff, Copy, Trash2, RefreshCw, Sun, SunDim } from 'lucide-react';
+
+const isLightType = (type: ObjectType) =>
+  type === ObjectType.POINT_LIGHT ||
+  type === ObjectType.SPOT_LIGHT ||
+  type === ObjectType.DIRECTIONAL_LIGHT ||
+  type === ObjectType.AMBIENT_LIGHT;
 
 export const ObjectDetailsPanel: React.FC = () => {
   const selectedIds = useStore((s) => s.selectedIds);
@@ -89,6 +95,20 @@ export const ObjectDetailsPanel: React.FC = () => {
           </button>
         </div>
 
+        {!isLightType(obj.type) && obj.type !== ObjectType.CAMERA && (
+          <button
+            onClick={() => updateObject(obj.id, { castShadow: obj.castShadow === false })}
+            className={`w-full flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all border ${
+              obj.castShadow !== false
+                ? 'bg-white/5 border-white/10 text-white'
+                : 'bg-gray-600/10 border-gray-600/20 text-gray-500'
+            }`}
+          >
+            {obj.castShadow !== false ? <Sun size={14} /> : <SunDim size={14} />}
+            {obj.castShadow !== false ? 'Emite sombra' : 'No emite sombra'}
+          </button>
+        )}
+
         <div className="flex gap-2">
           <button
             onClick={handleDuplicate}
@@ -117,7 +137,7 @@ export const ObjectDetailsPanel: React.FC = () => {
               ref={replaceInputRef}
               onChange={handleReplaceGlb}
               className="hidden"
-              accept=".glb,.gltf"
+              accept=".glb,.gltf,.bin"
             />
           </>
         )}

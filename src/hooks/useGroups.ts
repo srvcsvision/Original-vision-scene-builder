@@ -19,7 +19,7 @@ export const useGroups = () => {
 
     const locked = glbs.filter((o) => o.locked);
     locked.forEach((obj) => {
-      updateObject(obj.id, { groupId: undefined, wallLabel: undefined, wallPosition: undefined });
+      updateObject(obj.id, { wallLabel: undefined, wallPosition: undefined });
     });
 
     const unlocked = glbs.filter((o) => !o.locked);
@@ -40,8 +40,10 @@ export const useGroups = () => {
     });
 
     wallBuckets.forEach(({ wall, items }) => {
-      const name = wall.name.toLowerCase();
-      const sortByX = name.includes('frontal') || name.includes('trasera');
+      const wallAngleY = wall.transform.rotation[1];
+      const wallNormalX = Math.abs(Math.sin(wallAngleY));
+      const wallNormalZ = Math.abs(Math.cos(wallAngleY));
+      const sortByX = wallNormalZ > wallNormalX;
 
       items.sort((a, b) => {
         const axis = sortByX
@@ -52,7 +54,6 @@ export const useGroups = () => {
 
       items.forEach(({ obj }, idx) => {
         updateObject(obj.id, {
-          groupId: wall.id,
           wallLabel: wall.name,
           wallPosition: idx + 1,
         });
@@ -243,5 +244,30 @@ export const useGroups = () => {
     [objects, updateObject, saveSnapshot],
   );
 
-  return { assignAllToNearestWall, centerGroupOnWall, scaleGroup, rotateGroup, mirrorGroup, recenterGroupPivot };
+  const autoCompleteWallObjects = useCallback(
+    (videoUrl: string) => {
+      const targets = objects.filter(
+        (o) => o.type === ObjectType.GLB && o.wallLabel && o.wallPosition != null,
+      );
+      if (targets.length === 0) return 0;
+
+      saveSnapshot(objects);
+
+      targets.forEach((obj) => {
+        updateObject(obj.id, {
+          videoUrl,
+          clickable: true,
+          modalTitle: obj.modalTitle || obj.name,
+          modalDescription:
+            obj.modalDescription ||
+            `${obj.wallLabel} — Posición ${obj.wallPosition}`,
+        });
+      });
+
+      return targets.length;
+    },
+    [objects, updateObject, saveSnapshot],
+  );
+
+  return { assignAllToNearestWall, autoCompleteWallObjects, centerGroupOnWall, scaleGroup, rotateGroup, mirrorGroup, recenterGroupPivot };
 };

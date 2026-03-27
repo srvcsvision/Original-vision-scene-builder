@@ -1,8 +1,15 @@
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useStore } from '@/stores/useStore';
 import { ObjectType } from '@/types';
 import { CollapsibleSection } from './CollapsibleSection';
-import { Type, Film, MapPin, ListOrdered } from 'lucide-react';
+import { Type, Film, MapPin, ListOrdered, Maximize2, X } from 'lucide-react';
+
+function doubleNewlines(text: string): string {
+  return text
+    .replace(/\r\n/g, '\n')
+    .replace(/\n+/g, '\n\n');
+}
 
 export const MetadataPanel: React.FC = () => {
   const selectedIds = useStore((s) => s.selectedIds);
@@ -12,6 +19,31 @@ export const MetadataPanel: React.FC = () => {
   const walls = useMemo(
     () => objects.filter((o) => o.type === ObjectType.PLANE && o.name?.toLowerCase().includes('pared')),
     [objects],
+  );
+
+  const [expandedModal, setExpandedModal] = useState(false);
+
+  const handleDescPaste = useCallback(
+    (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+      const pasted = e.clipboardData.getData('text');
+      if (!pasted.includes('\n') && !pasted.includes('\r')) return;
+
+      e.preventDefault();
+      const ta = e.currentTarget;
+      const start = ta.selectionStart;
+      const end = ta.selectionEnd;
+      const current = ta.value;
+      const doubled = doubleNewlines(pasted);
+      const next = current.slice(0, start) + doubled + current.slice(end);
+      updateObject(selectedIds[0], { modalDescription: next });
+
+      requestAnimationFrame(() => {
+        const pos = start + doubled.length;
+        ta.selectionStart = pos;
+        ta.selectionEnd = pos;
+      });
+    },
+    [selectedIds, updateObject],
   );
 
   const obj = objects.find((o) => o.id === selectedIds[0]);
@@ -78,9 +110,18 @@ export const MetadataPanel: React.FC = () => {
 
         {obj.clickable && (
           <div className="space-y-4 bg-emerald-900/10 p-4 rounded-xl border border-emerald-500/20">
-            <div className="flex items-center gap-2 mb-2 text-emerald-400">
-              <Type size={14} />
-              <span className="text-[10px] font-bold uppercase tracking-widest">Contenido del Modal</span>
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2 text-emerald-400">
+                <Type size={14} />
+                <span className="text-[10px] font-bold uppercase tracking-widest">Contenido del Modal</span>
+              </div>
+              <button
+                onClick={() => setExpandedModal(true)}
+                className="p-1.5 hover:bg-white/10 rounded-lg text-gray-500 hover:text-emerald-400 transition-colors"
+                title="Expandir editor"
+              >
+                <Maximize2 size={14} />
+              </button>
             </div>
             <div>
               <label className="block text-[10px] text-gray-500 mb-1 uppercase">Título</label>
@@ -88,6 +129,7 @@ export const MetadataPanel: React.FC = () => {
                 type="text"
                 value={obj.modalTitle || ''}
                 onChange={(e) => updateObject(obj.id, { modalTitle: e.target.value })}
+                onBlur={(e) => updateObject(obj.id, { modalTitle: e.target.value.trim() })}
                 className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-1.5 text-xs text-white"
                 placeholder="Título del modal..."
               />
@@ -97,6 +139,8 @@ export const MetadataPanel: React.FC = () => {
               <textarea
                 value={obj.modalDescription || ''}
                 onChange={(e) => updateObject(obj.id, { modalDescription: e.target.value })}
+                onPaste={handleDescPaste}
+                onBlur={(e) => updateObject(obj.id, { modalDescription: e.target.value.trim() })}
                 className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-xs text-white h-24 resize-none"
                 placeholder="Escribe la descripción narrativa..."
               />
@@ -109,6 +153,7 @@ export const MetadataPanel: React.FC = () => {
                 type="url"
                 value={obj.videoUrl || ''}
                 onChange={(e) => updateObject(obj.id, { videoUrl: e.target.value })}
+                onBlur={(e) => updateObject(obj.id, { videoUrl: e.target.value.trim() })}
                 className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-1.5 text-xs text-white"
                 placeholder="https://..."
               />
@@ -116,6 +161,71 @@ export const MetadataPanel: React.FC = () => {
           </div>
         )}
       </div>
+
+      {expandedModal && createPortal(
+        <div
+          className="fixed inset-0 z-[300] bg-black/70 backdrop-blur-md flex items-center justify-center p-6"
+          onClick={(e) => { if (e.target === e.currentTarget) setExpandedModal(false); }}
+        >
+          <div className="relative w-full max-w-xl bg-[#111] border border-white/10 rounded-2xl shadow-2xl flex flex-col max-h-[85vh]">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-white/5 shrink-0">
+              <div className="flex items-center gap-2 text-emerald-400">
+                <Type size={16} />
+                <span className="text-sm font-bold text-white">Contenido del Modal</span>
+                <span className="text-[10px] text-gray-500 ml-1">— {obj.name}</span>
+              </div>
+              <button
+                onClick={() => setExpandedModal(false)}
+                className="p-1.5 hover:bg-white/10 rounded-full text-gray-400 hover:text-white transition-colors"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-5 overflow-y-auto flex-1 custom-scrollbar">
+              <div>
+                <label className="block text-[10px] text-gray-500 uppercase tracking-widest mb-1.5">Título</label>
+                <input
+                  type="text"
+                  value={obj.modalTitle || ''}
+                  onChange={(e) => updateObject(obj.id, { modalTitle: e.target.value })}
+                  onBlur={(e) => updateObject(obj.id, { modalTitle: e.target.value.trim() })}
+                  className="w-full bg-black border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                  placeholder="Título del modal..."
+                  autoFocus
+                />
+              </div>
+
+              <div className="flex-1">
+                <label className="block text-[10px] text-gray-500 uppercase tracking-widest mb-1.5">Descripción</label>
+                <textarea
+                  value={obj.modalDescription || ''}
+                  onChange={(e) => updateObject(obj.id, { modalDescription: e.target.value })}
+                  onPaste={handleDescPaste}
+                  onBlur={(e) => updateObject(obj.id, { modalDescription: e.target.value.trim() })}
+                  className="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-sm text-white leading-relaxed resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500/30 min-h-[250px]"
+                  placeholder="Escribe la descripción narrativa..."
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] text-gray-500 uppercase tracking-widest mb-1.5 flex items-center gap-1">
+                  <Film size={10} /> URL de Video
+                </label>
+                <input
+                  type="url"
+                  value={obj.videoUrl || ''}
+                  onChange={(e) => updateObject(obj.id, { videoUrl: e.target.value })}
+                  onBlur={(e) => updateObject(obj.id, { videoUrl: e.target.value.trim() })}
+                  className="w-full bg-black border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+                  placeholder="https://..."
+                />
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )}
     </CollapsibleSection>
   );
 };

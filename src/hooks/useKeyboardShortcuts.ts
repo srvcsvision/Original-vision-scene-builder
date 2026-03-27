@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useStore } from '@/stores/useStore';
 import { ObjectType } from '@/types';
 import {
@@ -6,6 +6,7 @@ import {
   DEFAULT_LIGHT_COLOR,
   DEFAULT_ROUGHNESS,
   DEFAULT_METALNESS,
+  TOTAL_WALLS,
 } from '@/constants/defaults';
 import { quickSave } from '@/services/projectSaver';
 
@@ -34,6 +35,11 @@ export const useKeyboardShortcuts = () => {
   const isSidebarOpen = useStore((s) => s.isSidebarOpen);
   const setIsSidebarOpen = useStore((s) => s.setIsSidebarOpen);
   const projectId = useStore((s) => s.projectId);
+  const setActiveWallIndex = useStore((s) => s.setActiveWallIndex);
+  const toggleLights = useStore((s) => s.toggleLights);
+
+  const wallChordPending = useRef(false);
+  const wallChordTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const addNewObject = (type: ObjectType) => {
@@ -60,6 +66,28 @@ export const useKeyboardShortcuts = () => {
       if (isInput) return;
 
       const mod = e.ctrlKey || e.metaKey;
+
+      // --- Acorde ⌘+P → 1/2/3/4 = Enfocar pared ---
+      if (wallChordPending.current) {
+        const wallNum = parseInt(e.key, 10);
+        wallChordPending.current = false;
+        if (wallChordTimer.current) { clearTimeout(wallChordTimer.current); wallChordTimer.current = null; }
+        if (wallNum >= 1 && wallNum <= TOTAL_WALLS) {
+          e.preventDefault();
+          clearSelection();
+          setIsNavMode(true);
+          setActiveWallIndex(wallNum - 1);
+          return;
+        }
+      }
+
+      if (mod && e.key === 'p') {
+        e.preventDefault();
+        wallChordPending.current = true;
+        if (wallChordTimer.current) clearTimeout(wallChordTimer.current);
+        wallChordTimer.current = setTimeout(() => { wallChordPending.current = false; }, 1500);
+        return;
+      }
 
       // --- Undo / Redo ---
       if (mod && e.key === 'z') {
@@ -204,6 +232,12 @@ export const useKeyboardShortcuts = () => {
         return;
       }
 
+      // I = Toggle luces
+      if (e.key === 'i' && !mod) {
+        toggleLights();
+        return;
+      }
+
       // Enter = Deseleccionar
       if (e.key === 'Enter' && selectedIds.length > 0) {
         e.preventDefault();
@@ -315,6 +349,6 @@ export const useKeyboardShortcuts = () => {
     saveSnapshot, copyObjects, copiedObjects, addObject, selectSingle, setSelectedId,
     toggleGrid, activeModalObjectId, setActiveModalObjectId, setTransformMode,
     isNavMode, setIsNavMode, isPropsOpen, setIsPropsOpen, isSidebarOpen,
-    setIsSidebarOpen, projectId,
+    setIsSidebarOpen, projectId, setActiveWallIndex, toggleLights,
   ]);
 };

@@ -39,12 +39,14 @@ import {
   Camera,
   Keyboard,
   X,
+  Lightbulb,
   Magnet,
   Copy,
   RefreshCw,
   FolderInput,
   ChevronDown,
   Folder,
+  Wand2,
 } from 'lucide-react';
 import { ShortcutsModal } from './ShortcutsModal';
 import { useGroups } from '@/hooks/useGroups';
@@ -125,6 +127,8 @@ export const Toolbar: React.FC = () => {
   const setTransformMode = useStore((s) => s.setTransformMode);
   const showGrid = useStore((s) => s.showGrid);
   const toggleGrid = useStore((s) => s.toggleGrid);
+  const lightsEnabled = useStore((s) => s.lightsEnabled);
+  const toggleLights = useStore((s) => s.toggleLights);
   const fov = useStore((s) => s.fov);
   const toggleFov = useStore((s) => s.toggleFov);
   const objects = useStore((s) => s.objects);
@@ -150,7 +154,7 @@ export const Toolbar: React.FC = () => {
   const projectName = useStore((s) => s.projectName);
   const setProject = useStore((s) => s.setProject);
 
-  const { assignAllToNearestWall } = useGroups();
+  const { assignAllToNearestWall, autoCompleteWallObjects } = useGroups();
 
   const glbInputRef = useRef<HTMLInputElement>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
@@ -167,6 +171,9 @@ export const Toolbar: React.FC = () => {
   const [existingProjects, setExistingProjects] = useState<{ id: string; name: string }[]>([]);
   const [loadingProjects, setLoadingProjects] = useState(false);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const [showAutoComplete, setShowAutoComplete] = useState(false);
+  const [autoCompleteUrl, setAutoCompleteUrl] = useState('');
+  const [autoCompleteResult, setAutoCompleteResult] = useState<number | null>(null);
 
   useEffect(() => {
     const onChange = () => setIsFullscreen(!!document.fullscreenElement);
@@ -346,41 +353,99 @@ export const Toolbar: React.FC = () => {
     }
   };
 
-  const handleGlbImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleGlbImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
     if (files.length === 0) {
       e.target.value = '';
       return;
     }
     saveSnapshot(objects);
-    const groupId = files.length > 1 ? crypto.randomUUID() : undefined;
-    const addedIds: string[] = [];
-    files.forEach((file) => {
-      const id = crypto.randomUUID();
-      const position: [number, number, number] = [0, 0, 0];
-      const blobUrl = URL.createObjectURL(file);
-      addObject({
-        id,
-        name: file.name,
-        type: ObjectType.GLB,
-        transform: { position, rotation: [0, 0, 0], scale: [1, 1, 1] },
-        color: DEFAULT_OBJECT_COLOR,
-        visible: true,
-        locked: false,
-        roughness: DEFAULT_ROUGHNESS,
-        metalness: DEFAULT_METALNESS,
-        url: blobUrl,
-        groupId,
-        clickable: true,
-        modalTitle: 'Storytelling Visual',
-        modalDescription: 'Este objeto representa un punto de inflexión en la narrativa visual del espacio.',
-      });
-      addedIds.push(id);
-    });
-    if (addedIds.length === 1) {
-      setSelectedId(addedIds[0]);
+
+    const gltfFile = files.find(f => f.name.toLowerCase().endsWith('.gltf'));
+
+    if (gltfFile) {
+      try {
+        const fileMap = new Map<string, File>();
+        files.forEach(f => fileMap.set(f.name, f));
+
+        const gltfText = await gltfFile.text();
+        const gltfJson = JSON.parse(gltfText);
+
+        if (gltfJson.buffers) {
+          for (const buffer of gltfJson.buffers) {
+            if (buffer.uri && !buffer.uri.startsWith('data:')) {
+              const match = fileMap.get(buffer.uri) ?? fileMap.get(buffer.uri.split('/').pop()!);
+              if (match) {
+                buffer.uri = URL.createObjectURL(match);
+              }
+            }
+          }
+        }
+
+        const FALLBACK_PIXEL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mO88P9/PQAJhAN8xBGJLwAAAABJRU5ErkJggg==';
+        if (gltfJson.images) {
+          for (const image of gltfJson.images) {
+            if (image.uri && !image.uri.startsWith('data:')) {
+              const baseName = image.uri.split('/').pop()!;
+              const match = fileMap.get(image.uri) ?? fileMap.get(baseName);
+              image.uri = match ? URL.createObjectURL(match) : FALLBACK_PIXEL;
+            }
+          }
+        }
+
+        const modifiedBlob = new Blob([JSON.stringify(gltfJson)], { type: 'model/gltf+json' });
+        const blobUrl = URL.createObjectURL(modifiedBlob);
+        const id = crypto.randomUUID();
+        const displayName = gltfFile.name.replace(/\.gltf$/i, '');
+
+        addObject({
+          id,
+          name: displayName,
+          type: ObjectType.GLB,
+          transform: { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] },
+          color: DEFAULT_OBJECT_COLOR,
+          visible: true,
+          locked: false,
+          roughness: DEFAULT_ROUGHNESS,
+          metalness: DEFAULT_METALNESS,
+          url: blobUrl,
+          clickable: true,
+          modalTitle: 'Storytelling Visual',
+          modalDescription: 'Este objeto representa un punto de inflexión en la narrativa visual del espacio.',
+        });
+        setSelectedId(id);
+      } catch (err) {
+        console.error('Error importing GLTF:', err);
+      }
     } else {
-      selectMultiple(addedIds);
+      const groupId = files.length > 1 ? crypto.randomUUID() : undefined;
+      const addedIds: string[] = [];
+      files.forEach((file) => {
+        const id = crypto.randomUUID();
+        const blobUrl = URL.createObjectURL(file);
+        addObject({
+          id,
+          name: file.name,
+          type: ObjectType.GLB,
+          transform: { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] },
+          color: DEFAULT_OBJECT_COLOR,
+          visible: true,
+          locked: false,
+          roughness: DEFAULT_ROUGHNESS,
+          metalness: DEFAULT_METALNESS,
+          url: blobUrl,
+          groupId,
+          clickable: true,
+          modalTitle: 'Storytelling Visual',
+          modalDescription: 'Este objeto representa un punto de inflexión en la narrativa visual del espacio.',
+        });
+        addedIds.push(id);
+      });
+      if (addedIds.length === 1) {
+        setSelectedId(addedIds[0]);
+      } else {
+        selectMultiple(addedIds);
+      }
     }
     e.target.value = '';
   };
@@ -526,7 +591,8 @@ export const Toolbar: React.FC = () => {
                 <ToolbarButton onClick={() => setTransformMode('rotate')} icon={<RotateCcw size={16} />} tooltip="Rotar" active={transformMode === 'rotate'} />
 
                 <div className="w-px h-5 sm:h-6 bg-white/10 mx-0.5" />
-                <ToolbarButton onClick={toggleGrid} icon={<Grid size={16} className={showGrid ? 'text-white' : 'text-gray-500'} />} tooltip="Grid" />
+                <ToolbarButton onClick={toggleGrid} icon={<Grid size={16} className={showGrid ? 'text-white' : 'text-gray-500'} />} tooltip="Grid (G)" />
+                <ToolbarButton onClick={toggleLights} icon={<Lightbulb size={16} className={lightsEnabled ? 'text-yellow-400' : 'text-gray-500'} />} tooltip={lightsEnabled ? 'Desactivar luces (I)' : 'Activar luces (I)'} />
 
                 <div className="w-px h-5 sm:h-6 bg-white/10 mx-0.5" />
                 <ToolbarButton
@@ -534,6 +600,16 @@ export const Toolbar: React.FC = () => {
                   icon={<Magnet size={16} />}
                   tooltip="Auto-asignar paredes"
                   disabled={objects.filter((o) => o.type === ObjectType.GLB).length === 0}
+                />
+                <ToolbarButton
+                  onClick={() => {
+                    setAutoCompleteUrl('');
+                    setAutoCompleteResult(null);
+                    setShowAutoComplete(true);
+                  }}
+                  icon={<Wand2 size={16} />}
+                  tooltip="Auto-completar video a objetos con pared"
+                  disabled={objects.filter((o) => o.type === ObjectType.GLB && o.wallLabel && o.wallPosition != null).length === 0}
                 />
               </>
             ) : (
@@ -685,8 +761,80 @@ export const Toolbar: React.FC = () => {
         />
       )}
 
-      <input type="file" ref={glbInputRef} onChange={handleGlbImport} className="hidden" accept=".glb,.gltf" multiple />
+      <input type="file" ref={glbInputRef} onChange={handleGlbImport} className="hidden" accept=".glb,.gltf,.bin" multiple />
       <input type="file" ref={importInputRef} onChange={handleImportProject} className="hidden" accept=".json" />
+
+      {showAutoComplete && (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
+          <div className="relative w-full max-w-sm bg-[#111] border border-white/10 rounded-2xl shadow-2xl p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <Wand2 size={16} className="text-purple-400" />
+                Auto-completar objetos
+              </h3>
+              <button
+                onClick={() => setShowAutoComplete(false)}
+                className="p-1 hover:bg-white/10 rounded-full text-gray-400 hover:text-white transition-colors"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <p className="text-[11px] text-gray-400">
+              Asigna la URL de video y activa el modal en todos los objetos que ya tienen pared y posición ({objects.filter((o) => o.type === ObjectType.GLB && o.wallLabel && o.wallPosition != null).length} objetos).
+            </p>
+
+            <div>
+              <label className="block text-[10px] text-gray-500 uppercase tracking-widest mb-1.5">URL de Video</label>
+              <input
+                type="url"
+                value={autoCompleteUrl}
+                onChange={(e) => setAutoCompleteUrl(e.target.value)}
+                placeholder="https://stream.mux.com/..."
+                className="w-full bg-black border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-purple-500/30 placeholder:text-gray-600"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && autoCompleteUrl.trim()) {
+                    const count = autoCompleteWallObjects(autoCompleteUrl.trim());
+                    setAutoCompleteResult(count);
+                  }
+                }}
+              />
+            </div>
+
+            {autoCompleteResult !== null && (
+              <div className="flex items-center gap-2 px-3 py-2 bg-emerald-900/20 border border-emerald-500/20 rounded-xl">
+                <Check size={14} className="text-emerald-400 shrink-0" />
+                <span className="text-xs text-emerald-300">
+                  {autoCompleteResult} objeto{autoCompleteResult !== 1 ? 's' : ''} actualizado{autoCompleteResult !== 1 ? 's' : ''}
+                </span>
+              </div>
+            )}
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowAutoComplete(false)}
+                className="flex-1 px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs font-bold text-white transition-colors"
+              >
+                {autoCompleteResult !== null ? 'Cerrar' : 'Cancelar'}
+              </button>
+              {autoCompleteResult === null && (
+                <button
+                  onClick={() => {
+                    if (!autoCompleteUrl.trim()) return;
+                    const count = autoCompleteWallObjects(autoCompleteUrl.trim());
+                    setAutoCompleteResult(count);
+                  }}
+                  disabled={!autoCompleteUrl.trim()}
+                  className="flex-1 px-4 py-2.5 bg-purple-600/30 hover:bg-purple-600/50 border border-purple-500/30 rounded-xl text-xs font-bold text-purple-300 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Aplicar a todos
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {showExitConfirm && (
         <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">

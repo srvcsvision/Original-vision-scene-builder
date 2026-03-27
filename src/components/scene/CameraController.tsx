@@ -1,9 +1,13 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useMemo } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, PerspectiveCamera, ScrollControls, useScroll } from '@react-three/drei';
 import * as THREE from 'three';
+import { ObjectType } from '@/types';
 import type { SceneObject } from '@/types';
 import { useStore } from '@/stores/useStore';
+import { TOTAL_WALLS } from '@/constants/defaults';
+
+const VIEW_DISTANCE = 5;
 
 interface AdaptiveCameraProps {
   isNavMode: boolean;
@@ -33,12 +37,20 @@ interface CameraRigProps {
 export const CameraRig: React.FC<CameraRigProps> = ({ isNavMode, activeIndex, onIndexChange, focusedObject }) => {
   const scroll = useScroll();
   const lastTargetIndex = useRef(activeIndex || 0);
-  const targetQuaternion = useRef(new THREE.Quaternion());
   const { camera, invalidate } = useThree();
+  const objects = useStore((s) => s.objects);
+
+  const maxIndex = TOTAL_WALLS - 1;
+
+  const walls = useMemo(() => {
+    return objects
+      .filter((o) => o.type === ObjectType.PLANE && o.name.startsWith('Pared'))
+      .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+  }, [objects]);
 
   useEffect(() => {
     if (isNavMode && activeIndex !== undefined && activeIndex !== lastTargetIndex.current && !focusedObject) {
-      const targetScroll = activeIndex / 3;
+      const targetScroll = maxIndex > 0 ? activeIndex / maxIndex : 0;
       scroll.el.scrollTo({
         top: 0,
         left: targetScroll * (scroll.el.scrollWidth - scroll.el.clientWidth),
@@ -47,7 +59,7 @@ export const CameraRig: React.FC<CameraRigProps> = ({ isNavMode, activeIndex, on
       lastTargetIndex.current = activeIndex;
       invalidate();
     }
-  }, [activeIndex, isNavMode, scroll, focusedObject, invalidate]);
+  }, [activeIndex, isNavMode, scroll, focusedObject, invalidate, maxIndex]);
 
   useFrame((state) => {
     if (!isNavMode) return;
@@ -55,28 +67,37 @@ export const CameraRig: React.FC<CameraRigProps> = ({ isNavMode, activeIndex, on
     if (focusedObject) {
       const objPos = new THREE.Vector3(...focusedObject.transform.position);
       const objRot = new THREE.Euler(...focusedObject.transform.rotation);
-      const offset = new THREE.Vector3(0, 0.5, 3).applyEuler(objRot);
+      const offset = new THREE.Vector3(0, 0.3, 2).applyEuler(objRot);
       const zoomPos = objPos.clone().add(offset);
 
-      state.camera.position.lerp(zoomPos, 0.1);
+      state.camera.position.lerp(zoomPos, 0.15);
       const tempCamera = state.camera.clone();
       tempCamera.lookAt(objPos);
-      state.camera.quaternion.slerp(tempCamera.quaternion, 0.1);
+      state.camera.quaternion.slerp(tempCamera.quaternion, 0.15);
       invalidate();
     } else {
-      const currentWallIndex = Math.round(scroll.offset * 3);
+      const currentWallIndex = Math.round(scroll.offset * maxIndex);
       if (onIndexChange && currentWallIndex !== lastTargetIndex.current) {
         lastTargetIndex.current = currentWallIndex;
         onIndexChange(currentWallIndex);
       }
 
-      const defaultPos = new THREE.Vector3(0, 5, 0);
-      state.camera.position.lerp(defaultPos, 0.1);
+      const wallObj = walls[Math.min(currentWallIndex, walls.length - 1)];
+      if (!wallObj) return;
 
-      const targetAngle = -currentWallIndex * (Math.PI / 2);
-      const targetRotation = new THREE.Euler(0, targetAngle, 0);
-      targetQuaternion.current.setFromEuler(targetRotation);
-      state.camera.quaternion.slerp(targetQuaternion.current, 0.1);
+      const wallCenter = new THREE.Vector3(...wallObj.transform.position);
+      const wallRot = new THREE.Euler(...wallObj.transform.rotation);
+      const normal = new THREE.Vector3(0, 0, 1).applyEuler(wallRot);
+
+      const targetPos = wallCenter.clone().add(normal.clone().multiplyScalar(VIEW_DISTANCE));
+      targetPos.y = wallCenter.y;
+
+      state.camera.position.lerp(targetPos, 0.15);
+
+      const lookTarget = wallCenter.clone();
+      const tempCam = state.camera.clone();
+      tempCam.lookAt(lookTarget);
+      state.camera.quaternion.slerp(tempCam.quaternion, 0.15);
       invalidate();
     }
   });
@@ -128,7 +149,7 @@ export const ScrollNav: React.FC<ScrollNavProps> = ({
   isNavMode, focusedObject, activeWallIndex, onWallIndexChange, children,
 }) => {
   return (
-    <ScrollControls horizontal pages={4} distance={1} damping={0.1} enabled={isNavMode && !focusedObject}>
+    <ScrollControls horizontal pages={TOTAL_WALLS} distance={1} damping={0.1} enabled={isNavMode && !focusedObject}>
       <CameraRig
         isNavMode={isNavMode}
         activeIndex={activeWallIndex}

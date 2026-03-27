@@ -8,6 +8,7 @@ import { SpotLightFrustumHelper } from './SpotLightFrustumHelper';
 interface LightRendererProps {
   obj: SceneObject;
   showHelper: boolean;
+  lightsEnabled?: boolean;
 }
 
 const SpotLightWithTarget: React.FC<{
@@ -46,7 +47,7 @@ const SpotLightWithTarget: React.FC<{
   );
 };
 
-export const LightRenderer: React.FC<LightRendererProps> = React.memo(({ obj, showHelper }) => {
+export const LightRenderer: React.FC<LightRendererProps> = React.memo(({ obj, showHelper, lightsEnabled = true }) => {
   const shadowProps = obj.castShadow ? {
     castShadow: true,
     'shadow-mapSize-width': SHADOW_MAP_SIZE,
@@ -60,16 +61,18 @@ export const LightRenderer: React.FC<LightRendererProps> = React.memo(({ obj, sh
           {showHelper && (
             <mesh raycast={() => null}>
               <sphereGeometry args={[0.15, 12, 12]} />
-              <meshBasicMaterial color={obj.color} wireframe transparent opacity={0.6} />
+              <meshBasicMaterial color={obj.color} wireframe transparent opacity={lightsEnabled ? 0.6 : 0.2} />
             </mesh>
           )}
-          <pointLight
-            color={obj.color}
-            intensity={obj.intensity ?? 1}
-            distance={obj.distance ?? 0}
-            decay={obj.decay ?? 2}
-            {...shadowProps}
-          />
+          {lightsEnabled && (
+            <pointLight
+              color={obj.color}
+              intensity={obj.intensity ?? 1}
+              distance={obj.distance ?? 0}
+              decay={obj.decay ?? 2}
+              {...shadowProps}
+            />
+          )}
         </group>
       );
 
@@ -87,7 +90,7 @@ export const LightRenderer: React.FC<LightRendererProps> = React.memo(({ obj, sh
               decay={obj.decay ?? 2}
             />
           )}
-          <SpotLightWithTarget obj={obj} shadowProps={shadowProps} />
+          {lightsEnabled && <SpotLightWithTarget obj={obj} shadowProps={shadowProps} />}
         </group>
       );
 
@@ -97,19 +100,21 @@ export const LightRenderer: React.FC<LightRendererProps> = React.memo(({ obj, sh
           {showHelper && (
             <mesh raycast={() => null}>
               <boxGeometry args={[0.2, 0.2, 0.4]} />
-              <meshBasicMaterial color={obj.color} wireframe transparent opacity={0.6} />
+              <meshBasicMaterial color={obj.color} wireframe transparent opacity={lightsEnabled ? 0.6 : 0.2} />
             </mesh>
           )}
-          <directionalLight
-            color={obj.color}
-            intensity={obj.intensity ?? 1}
-            {...shadowProps}
-          />
+          {lightsEnabled && (
+            <directionalLight
+              color={obj.color}
+              intensity={obj.intensity ?? 1}
+              {...shadowProps}
+            />
+          )}
         </group>
       );
 
     case ObjectType.AMBIENT_LIGHT:
-      return <ambientLight color={obj.color} intensity={obj.intensity ?? 1} />;
+      return lightsEnabled ? <ambientLight color={obj.color} intensity={obj.intensity ?? 1} /> : null;
 
     default:
       return null;

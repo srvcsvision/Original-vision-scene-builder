@@ -41,6 +41,7 @@ export const SceneCanvas: React.FC = () => {
   const activeWallIndex = useStore((s) => s.activeWallIndex);
   const setActiveWallIndex = useStore((s) => s.setActiveWallIndex);
   const fov = useStore((s) => s.fov);
+  const lightsEnabled = useStore((s) => s.lightsEnabled);
   const updateObject = useStore((s) => s.updateObject);
   const saveSnapshot = useStore((s) => s.saveSnapshot);
   const setActiveModalObjectId = useStore((s) => s.setActiveModalObjectId);
@@ -48,6 +49,7 @@ export const SceneCanvas: React.FC = () => {
 
   const [isDragging, setIsDragging] = useState(false);
   const fKeyDown = useRef(false);
+  const dragEndTimeRef = useRef(0);
   const initialTransformsRef = useRef<Map<string, Transform>>(new Map());
 
   const captureInitialTransforms = useRef(() => {});
@@ -69,6 +71,7 @@ export const SceneCanvas: React.FC = () => {
   const handleSetIsDragging = useCallback(
     (val: boolean) => {
       if (val) captureInitialTransforms.current();
+      else dragEndTimeRef.current = performance.now();
       setIsDragging(val);
     },
     [setIsDragging]
@@ -166,6 +169,7 @@ export const SceneCanvas: React.FC = () => {
 
   const handleSelect = useCallback(
     (id: string, multiSelect: boolean, groupSelect: boolean) => {
+      if (performance.now() - dragEndTimeRef.current < 150) return;
       if (groupSelect) {
         const obj = objects.find((o) => o.id === id);
         if (obj?.groupId) {
@@ -220,7 +224,25 @@ export const SceneCanvas: React.FC = () => {
     [handleAltClick]
   );
 
-  const visibleObjects = useMemo(() => objects.filter((o) => o.visible), [objects]);
+  const activeGroupId = useMemo(() => {
+    if (selectedIds.length === 0) return null;
+    const groupIds = selectedIds.map((id) => objects.find((o) => o.id === id)?.groupId).filter(Boolean);
+    if (groupIds.length === 0) return null;
+    const first = groupIds[0];
+    if (groupIds.every((g) => g === first)) return first as string;
+    return null;
+  }, [selectedIds, objects]);
+
+  const visibleObjects = useMemo(() => {
+    const visible = objects.filter((o) => o.visible);
+    if (!activeGroupId) return visible;
+    return visible.filter((o) =>
+      o.groupId === activeGroupId ||
+      o.type === ObjectType.PLANE ||
+      isLightType(o.type) ||
+      o.type === ObjectType.CAMERA
+    );
+  }, [objects, activeGroupId]);
 
   return (
     <div className="w-full h-full relative group">
@@ -260,6 +282,7 @@ export const SceneCanvas: React.FC = () => {
                   transformMode={transformMode}
                   setIsDragging={handleSetIsDragging}
                   disableEditing={effectiveNavMode}
+                  lightsEnabled={lightsEnabled}
                 />
               ))}
             </group>

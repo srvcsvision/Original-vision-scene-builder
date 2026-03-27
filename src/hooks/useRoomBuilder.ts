@@ -5,6 +5,8 @@ import {
   DEFAULT_WALL_COLORS,
   DEFAULT_FLOOR_COLOR,
   DEFAULT_LIGHT_COLOR,
+  TOTAL_WALLS,
+  WALL_LABELS,
 } from '@/constants/defaults';
 
 interface RoomConfig {
@@ -25,12 +27,11 @@ export const useRoomBuilder = () => {
       const w = config?.width ?? 10;
       const h = config?.height ?? 10;
       const d = config?.depth ?? 10;
-      const halfW = w / 2;
       const halfH = h / 2;
-      const halfD = d / 2;
 
       saveSnapshot(objects);
 
+      const totalWidth = TOTAL_WALLS * w;
       const floorId = crypto.randomUUID();
       const floor: SceneObject = {
         id: floorId,
@@ -42,34 +43,28 @@ export const useRoomBuilder = () => {
         locked: false,
         roughness: 0.5,
         metalness: 0.1,
-        width: w,
+        width: totalWidth,
         height: d,
       };
 
-      const wallNames = ['Pared Frontal', 'Pared Derecha', 'Pared Trasera', 'Pared Izquierda'];
-      const walls: SceneObject[] = wallNames.map((name, i) => {
+      const walls: SceneObject[] = WALL_LABELS.map((name, i) => {
         const wallId = crypto.randomUUID();
-        const angle = (i * Math.PI) / 2;
-        const dist = i % 2 === 0 ? halfD : halfW;
+        const x = (i - (TOTAL_WALLS - 1) / 2) * w;
         return {
           id: wallId,
           name,
           type: ObjectType.PLANE,
-          color: DEFAULT_WALL_COLORS[i],
+          color: DEFAULT_WALL_COLORS[i % DEFAULT_WALL_COLORS.length],
           transform: {
-            position: [
-              Math.sin(angle) * dist,
-              halfH,
-              -Math.cos(angle) * dist,
-            ] as [number, number, number],
-            rotation: [0, -angle, 0] as [number, number, number],
+            position: [x, halfH, 0] as [number, number, number],
+            rotation: [0, 0, 0] as [number, number, number],
             scale: [1, 1, 1] as [number, number, number],
           },
           visible: true,
           locked: false,
           roughness: 0.5,
           metalness: 0.1,
-          width: i % 2 === 0 ? w : d,
+          width: w,
           height: h,
           groupId: undefined,
         };
