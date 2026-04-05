@@ -38,6 +38,8 @@ export const useKeyboardShortcuts = () => {
   const setActiveWallIndex = useStore((s) => s.setActiveWallIndex);
   const toggleLights = useStore((s) => s.toggleLights);
 
+  const updateObject = useStore((s) => s.updateObject);
+
   const wallChordPending = useRef(false);
   const wallChordTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -221,6 +223,35 @@ export const useKeyboardShortcuts = () => {
         return;
       }
 
+      // --- Shift + Arrow = Nudge (mover poquito) ---
+      if (e.shiftKey && !mod && selectedIds.length > 0 &&
+          ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+        e.preventDefault();
+        const NUDGE = 0.05;
+        const delta: [number, number, number] = [0, 0, 0];
+        if (e.key === 'ArrowLeft')  delta[0] = -NUDGE;
+        if (e.key === 'ArrowRight') delta[0] =  NUDGE;
+        if (e.key === 'ArrowUp')    delta[2] = -NUDGE;
+        if (e.key === 'ArrowDown')  delta[2] =  NUDGE;
+
+        saveSnapshot(objects);
+        selectedIds.forEach((id) => {
+          const obj = objects.find((o) => o.id === id);
+          if (!obj) return;
+          updateObject(id, {
+            transform: {
+              ...obj.transform,
+              position: [
+                obj.transform.position[0] + delta[0],
+                obj.transform.position[1] + delta[1],
+                obj.transform.position[2] + delta[2],
+              ],
+            },
+          });
+        });
+        return;
+      }
+
       // --- Shortcuts sin modifier ---
 
       // Alt held = light placement interactions in 3D, skip other shortcuts
@@ -349,6 +380,6 @@ export const useKeyboardShortcuts = () => {
     saveSnapshot, copyObjects, copiedObjects, addObject, selectSingle, setSelectedId,
     toggleGrid, activeModalObjectId, setActiveModalObjectId, setTransformMode,
     isNavMode, setIsNavMode, isPropsOpen, setIsPropsOpen, isSidebarOpen,
-    setIsSidebarOpen, projectId, setActiveWallIndex, toggleLights,
+    setIsSidebarOpen, projectId, setActiveWallIndex, toggleLights, updateObject,
   ]);
 };

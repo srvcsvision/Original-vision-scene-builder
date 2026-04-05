@@ -24,6 +24,7 @@ interface SpotLightFrustumHelperProps {
   target: [number, number, number];
   intensity: number;
   decay: number;
+  useFixedTarget?: boolean;
 }
 
 function buildCircle(radius: number, depth: number, segments: number): Float32Array {
@@ -58,6 +59,7 @@ export const SpotLightFrustumHelper: React.FC<SpotLightFrustumHelperProps> = Rea
   target,
   intensity,
   decay,
+  useFixedTarget = false,
 }) => {
   const groupRef = useRef<THREE.Group>(null);
 
@@ -99,6 +101,7 @@ export const SpotLightFrustumHelper: React.FC<SpotLightFrustumHelperProps> = Rea
     return geo;
   }, [angle, penumbra, effectiveDistance]);
 
+
   useEffect(() => {
     return () => {
       outerGeometry.dispose();
@@ -109,6 +112,14 @@ export const SpotLightFrustumHelper: React.FC<SpotLightFrustumHelperProps> = Rea
   useFrame(() => {
     const group = groupRef.current;
     if (!group?.parent) return;
+
+    if (!useFixedTarget) {
+      _defaultDir.set(0, 0, -1);
+      _dirVec.set(0, -1, 0);
+      _rotQuat.setFromUnitVectors(_defaultDir, _dirVec);
+      group.quaternion.copy(_rotQuat);
+      return;
+    }
 
     group.parent.getWorldPosition(_worldPos);
     _targetVec.set(target[0], target[1], target[2]);

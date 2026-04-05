@@ -4,6 +4,7 @@ import { Environment, Center, ContactShadows, useGLTF } from '@react-three/drei'
 import * as THREE from 'three';
 import { useStore } from '@/stores/useStore';
 import { X, Download } from 'lucide-react';
+import type { Presenter } from '@/types';
 
 const ModalObjectPreview: React.FC<{ url: string }> = ({ url }) => {
   const { scene } = useGLTF(url);
@@ -25,12 +26,38 @@ const ModalObjectPreview: React.FC<{ url: string }> = ({ url }) => {
   );
 };
 
+const PresenterAvatars: React.FC<{ presenters: Presenter[] }> = ({ presenters }) => {
+  if (presenters.length === 0) return null;
+
+  return (
+    <div className="flex items-center justify-center gap-3 flex-wrap">
+      {presenters.map((p) => (
+        <div key={p.id} className="flex items-center gap-2">
+          {p.imageUrl ? (
+            <img
+              src={p.imageUrl}
+              alt={p.name}
+              className="w-8 h-8 rounded-full object-cover border-2 border-white/20 shadow-lg"
+            />
+          ) : (
+            <div className="w-8 h-8 rounded-full bg-white/10 border-2 border-white/20 flex items-center justify-center text-white/40 text-[10px] font-bold">
+              {p.name.charAt(0).toUpperCase()}
+            </div>
+          )}
+          <span className="text-sm text-white/60 font-medium tracking-wide">{p.name}</span>
+        </div>
+      ))}
+    </div>
+  );
+};
+
 export const ModalStoryTelling: React.FC = () => {
   const activeModalObjectId = useStore((s) => s.activeModalObjectId);
   const setActiveModalObjectId = useStore((s) => s.setActiveModalObjectId);
   const setShowVideo = useStore((s) => s.setShowVideo);
   const setSelectedId = useStore((s) => s.setSelectedId);
   const objects = useStore((s) => s.objects);
+  const allPresenters = useStore((s) => s.presenters);
   const isMobile = useStore((s) => s.isMobile);
   const isPreview = useStore((s) => s.isPreview);
 
@@ -76,6 +103,12 @@ export const ModalStoryTelling: React.FC = () => {
           <h2 className="text-2xl sm:text-3xl font-bold text-white leading-tight px-4 drop-shadow-xl tracking-tight">
             {obj.modalTitle || obj.title || obj.name}
           </h2>
+
+          <PresenterAvatars
+            presenters={allPresenters.filter((p) =>
+              (obj.presenterIds || []).includes(p.id)
+            )}
+          />
 
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 bg-black/30 p-2 rounded-[24px] sm:rounded-[28px] border border-white/5">
             <button className="flex-1 py-3 sm:py-4 px-6 bg-[#5c2d1c] hover:bg-[#6e3723] rounded-[18px] sm:rounded-[22px] text-white font-bold text-sm transition-all flex items-center justify-center gap-2 shadow-lg active:scale-95">

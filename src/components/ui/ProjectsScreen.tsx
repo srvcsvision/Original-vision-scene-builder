@@ -14,6 +14,7 @@ export const ProjectsScreen: React.FC = () => {
   const setProject = useStore((s) => s.setProject);
   const setObjects = useStore((s) => s.setObjects);
   const loadSceneConfig = useStore((s) => s.loadSceneConfig);
+  const setPresenters = useStore((s) => s.setPresenters);
   const clearHistory = useStore((s) => s.clearHistory);
   const clearObjects = useStore((s) => s.clearObjects);
   const projectId = useStore((s) => s.projectId);
@@ -48,6 +49,7 @@ export const ProjectsScreen: React.FC = () => {
     const id = crypto.randomUUID();
     clearObjects();
     clearHistory();
+    setPresenters([]);
     setProject({
       id,
       name: '',
@@ -91,6 +93,7 @@ export const ProjectsScreen: React.FC = () => {
           const normalized = normalizeLoadedSceneObjects(allObjects, config.uniqueGlbs || []);
 
           setObjects(normalized);
+          setPresenters(config.presenters || []);
         } else {
           console.warn('[ProjectsScreen] Config download returned null');
         }
@@ -169,7 +172,7 @@ export const ProjectsScreen: React.FC = () => {
                 <RefreshCw size={12} />
               </button>
             </div>
-            {projectsList.map((project) => (
+            {[...projectsList].sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0)).map((project) => (
               <div key={project.id} className="relative">
                 <ProjectCard project={project} onClick={handleOpenProject} onRename={handleRenameProject} />
                 {loadingProject === project.id && (

@@ -1,3 +1,8 @@
+export enum WallMaterialType {
+  GRID = 'grid',
+  STUCCO = 'stucco',
+}
+
 export enum ObjectType {
   BOX = 'box',
   SPHERE = 'sphere',
@@ -30,6 +35,9 @@ export interface SceneObject {
   roughness?: number;
   metalness?: number;
   textureUrl?: string;
+  wallMaterialType?: WallMaterialType;
+  emissive?: boolean;
+  emissiveIntensity?: number;
 
   // Light properties
   intensity?: number;
@@ -39,6 +47,7 @@ export interface SceneObject {
   distance?: number;
   decay?: number;
   castShadow?: boolean;
+  useFixedTarget?: boolean;
 
   // GLB
   url?: string;
@@ -53,6 +62,9 @@ export interface SceneObject {
   title?: string;
   description?: string;
   videoUrl?: string;
+  /** @deprecated Use presenterIds instead */
+  presenter?: string | null;
+  presenterIds?: string[];
 
   // Interaction
   clickable?: boolean;
@@ -70,6 +82,12 @@ export interface SceneObject {
   meshOffset?: [number, number, number];
 }
 
+export interface Presenter {
+  id: string;
+  name: string;
+  imageUrl: string;
+}
+
 export interface UniqueGlb {
   path: string;
   url: string;
@@ -83,6 +101,7 @@ export interface SceneConfig {
   lights: SceneObject[];
   objects: SceneObject[];
   uniqueGlbs: UniqueGlb[];
+  presenters?: Presenter[];
 }
 
 export interface ProjectMeta {

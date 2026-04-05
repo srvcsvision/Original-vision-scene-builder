@@ -15,6 +15,7 @@ const SECTIONS = [
     shortcuts: [
       { keys: [`${MOD}+1`], desc: 'Modo Mover (posición)' },
       { keys: [`${MOD}+2`], desc: 'Modo Rotar' },
+      { keys: ['⇧+←→↑↓'], desc: 'Nudge (mover poquito)' },
     ],
   },
   {

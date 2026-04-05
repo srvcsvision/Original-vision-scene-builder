@@ -2,7 +2,7 @@ import React, { Suspense, useRef, useEffect, useState, useMemo } from 'react';
 import { TransformControls, useTexture } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { SceneObject, ObjectType, TransformMode } from '@/types';
+import { SceneObject, ObjectType, TransformMode, WallMaterialType } from '@/types';
 import { ModelLoader } from './ModelLoader';
 import { LightRenderer } from './LightRenderer';
 
@@ -88,6 +88,8 @@ export const RenderObject: React.FC<RenderObjectProps> = React.memo(({
     }
   };
 
+  const isWall = obj.type === ObjectType.PLANE && obj.name.startsWith('Pared');
+
   const handleClick = (e: any) => {
     e.stopPropagation();
 
@@ -103,12 +105,15 @@ export const RenderObject: React.FC<RenderObjectProps> = React.memo(({
       }
       return;
     }
+
+    if (isWall && obj.locked) return;
+
     const multiSelect = e.ctrlKey || e.metaKey;
     onSelect(obj.id, multiSelect, e.shiftKey);
   };
 
   const useLambert = obj.type === ObjectType.PLANE;
-  const showGizmo = !disableEditing && isPrimary && target;
+  const showGizmo = !disableEditing && !(isWall && obj.locked) && isPrimary && target;
 
   const glbLoadUrl =
     obj.type === ObjectType.GLB
@@ -125,7 +130,7 @@ export const RenderObject: React.FC<RenderObjectProps> = React.memo(({
         userData={{ sceneObjectId: obj.id }}
         onPointerOver={(e) => {
           e.stopPropagation();
-          if (!obj.locked || disableEditing) {
+          if (!(isWall && obj.locked) || disableEditing) {
             document.body.style.cursor = 'pointer';
           }
         }}
@@ -164,7 +169,13 @@ export const RenderObject: React.FC<RenderObjectProps> = React.memo(({
                   color={obj.color}
                   roughness={obj.roughness ?? 0.5}
                   metalness={obj.metalness ?? 0.1}
+                  emissive={obj.emissive}
+                  emissiveIntensity={obj.emissiveIntensity ?? 1}
                 />
+              </Suspense>
+            ) : useLambert && obj.wallMaterialType === WallMaterialType.STUCCO ? (
+              <Suspense fallback={<meshStandardMaterial color={obj.color} />}>
+                <StuccoWallMaterial color={obj.color} />
               </Suspense>
             ) : useLambert ? (
               <GridPlaneMaterial color={obj.color} />
@@ -198,8 +209,23 @@ const TexturedMaterial: React.FC<{
   color: string;
   roughness: number;
   metalness: number;
-}> = ({ url, color, roughness, metalness }) => {
+  emissive?: boolean;
+  emissiveIntensity?: number;
+}> = ({ url, color, roughness, metalness, emissive, emissiveIntensity = 1 }) => {
   const texture = useTexture(url);
+  if (emissive) {
+    return (
+      <meshStandardMaterial
+        map={texture}
+        emissive="#ffffff"
+        emissiveMap={texture}
+        emissiveIntensity={emissiveIntensity}
+        toneMapped={false}
+        roughness={1}
+        metalness={0}
+      />
+    );
+  }
   return (
     <meshStandardMaterial
       map={texture}
@@ -246,4 +272,32 @@ const GridPlaneMaterial: React.FC<{ color: string }> = ({ color }) => {
   }, []);
 
   return <meshLambertMaterial color="#ffffff" map={texture} />;
+};
+
+const STUCCO_BASE = '/textures/stucco/WhiteStuccoWall01_1K';
+
+const StuccoWallMaterial: React.FC<{ color: string }> = () => {
+  const [baseColor, normalMap, roughnessMap] = useTexture([
+    `${STUCCO_BASE}_BaseColor.png`,
+    `${STUCCO_BASE}_Normal.png`,
+    `${STUCCO_BASE}_Roughness.png`,
+  ]);
+
+  useMemo(() => {
+    [baseColor, normalMap, roughnessMap].forEach((tex) => {
+      tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+      tex.repeat.set(2, 2);
+    });
+  }, [baseColor, normalMap, roughnessMap]);
+
+  return (
+    <meshStandardMaterial
+      map={baseColor}
+      normalMap={normalMap}
+      roughnessMap={roughnessMap}
+      color="#ffffff"
+      roughness={1}
+      metalness={0}
+    />
+  );
 };

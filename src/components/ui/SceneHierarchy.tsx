@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback, useState } from 'react';
+import React, { useMemo, useCallback, useState, useEffect, useRef } from 'react';
 import { useStore } from '@/stores/useStore';
 import { ObjectType, SceneObject } from '@/types';
 import { SceneHierarchyItem } from './SceneHierarchyItem';
@@ -28,6 +28,53 @@ export const SceneHierarchyLeft: React.FC = () => {
 
   const { scaleGroup, recenterGroupPivot } = useGroups();
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const [scalePercent, setScalePercent] = useState(10);
+  const [showPercentPicker, setShowPercentPicker] = useState<string | null>(null);
+  const percentPresets = [5, 10, 15, 25, 50];
+  const percentPickerRef = useRef<HTMLDivElement>(null);
+  const groupRefsMap = useRef<Map<string, HTMLDivElement>>(new Map());
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showPercentPicker) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (percentPickerRef.current && !percentPickerRef.current.contains(e.target as Node)) {
+        setShowPercentPicker(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showPercentPicker]);
+
+  const activeGroupId = useMemo(() => {
+    if (selectedIds.length === 0) return null;
+    for (const id of selectedIds) {
+      const obj = objects.find((o) => o.id === id);
+      if (obj?.groupId) return obj.groupId;
+    }
+    return null;
+  }, [selectedIds, objects]);
+
+  useEffect(() => {
+    if (!activeGroupId) return;
+    setCollapsedGroups((prev) => {
+      if (!prev.has(activeGroupId)) return prev;
+      const next = new Set(prev);
+      next.delete(activeGroupId);
+      return next;
+    });
+    requestAnimationFrame(() => {
+      const el = groupRefsMap.current.get(activeGroupId);
+      if (el && scrollContainerRef.current) {
+        const container = scrollContainerRef.current;
+        const elRect = el.getBoundingClientRect();
+        const containerRect = container.getBoundingClientRect();
+        const elTop = elRect.top - containerRect.top + container.scrollTop;
+        const targetScroll = elTop - containerRect.height / 2 + elRect.height / 2;
+        container.scrollTo({ top: Math.max(0, targetScroll), behavior: 'smooth' });
+      }
+    });
+  }, [activeGroupId]);
 
   const { planes, groups, ungroupedGlbs, lights, others } = useMemo(() => {
     const planes: SceneObject[] = [];
@@ -137,7 +184,7 @@ export const SceneHierarchyLeft: React.FC = () => {
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4">
             {planes.length > 0 && (
               <CollapsibleSection title="Paredes / Pisos">
                 <div className="space-y-1">
@@ -166,7 +213,7 @@ export const SceneHierarchyLeft: React.FC = () => {
                       memberIds.length > 0 && memberIds.every((mid) => selectedIds.includes(mid));
 
                     return (
-                      <div key={group.wallId}>
+                      <div key={group.wallId} ref={(el) => { if (el) groupRefsMap.current.set(group.wallId, el); else groupRefsMap.current.delete(group.wallId); }}>
                         <div className="flex items-center gap-1 mb-1">
                           <button
                             onClick={() => toggleGroupCollapse(group.wallId)}
@@ -196,16 +243,66 @@ export const SceneHierarchyLeft: React.FC = () => {
                             <Crosshair size={12} className="text-gray-500" />
                           </button>
                           <button
-                            onClick={() => scaleGroup(group.wallId, 0.9)}
+                            onClick={() => scaleGroup(group.wallId, 1 - scalePercent / 100)}
                             className="p-0.5 hover:bg-white/10 rounded transition-colors flex-shrink-0"
-                            title="Reducir grupo (−10%)"
+                            title={`Reducir grupo (−${scalePercent}%)`}
                           >
                             <ZoomOut size={12} className="text-gray-500" />
                           </button>
+                          <div className="relative" ref={showPercentPicker === group.wallId ? percentPickerRef : undefined}>
+                            <button
+                              onClick={() =>
+                                setShowPercentPicker(
+                                  showPercentPicker === group.wallId ? null : group.wallId
+                                )
+                              }
+                              className="px-1 text-[9px] text-gray-400 hover:text-white hover:bg-white/10 rounded transition-colors tabular-nums cursor-pointer"
+                              title="Cambiar porcentaje de escala"
+                            >
+                              {scalePercent}%
+                            </button>
+                            {showPercentPicker === group.wallId && (
+                              <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 z-50 bg-gray-900 border border-white/10 rounded-lg shadow-xl p-2 min-w-[100px]">
+                                <div className="flex flex-wrap gap-1 mb-1.5">
+                                  {percentPresets.map((p) => (
+                                    <button
+                                      key={p}
+                                      onClick={() => {
+                                        setScalePercent(p);
+                                        setShowPercentPicker(null);
+                                      }}
+                                      className={`px-1.5 py-0.5 text-[10px] rounded transition-colors ${
+                                        scalePercent === p
+                                          ? 'bg-blue-500/30 text-blue-300'
+                                          : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
+                                      }`}
+                                    >
+                                      {p}%
+                                    </button>
+                                  ))}
+                                </div>
+                                <input
+                                  type="number"
+                                  min={1}
+                                  max={99}
+                                  value={scalePercent}
+                                  onChange={(e) => {
+                                    const v = parseInt(e.target.value, 10);
+                                    if (v > 0 && v < 100) setScalePercent(v);
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') setShowPercentPicker(null);
+                                  }}
+                                  className="w-full bg-white/5 border border-white/10 rounded px-1.5 py-0.5 text-[10px] text-white text-center outline-none focus:border-blue-500/50"
+                                  autoFocus
+                                />
+                              </div>
+                            )}
+                          </div>
                           <button
-                            onClick={() => scaleGroup(group.wallId, 1.1)}
+                            onClick={() => scaleGroup(group.wallId, 1 + scalePercent / 100)}
                             className="p-0.5 hover:bg-white/10 rounded transition-colors flex-shrink-0"
-                            title="Agrandar grupo (+10%)"
+                            title={`Agrandar grupo (+${scalePercent}%)`}
                           >
                             <ZoomIn size={12} className="text-gray-500" />
                           </button>

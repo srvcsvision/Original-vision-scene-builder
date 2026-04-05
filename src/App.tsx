@@ -15,11 +15,24 @@ import { VideoOverlay } from '@/components/ui/VideoOverlay';
 import { RoomBuilderButton } from '@/components/ui/RoomBuilderButton';
 import { CameraPerspectiveBar } from '@/components/ui/CameraPerspectiveBar';
 
+const MobileFrame: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <div className="flex-1 flex items-center justify-center bg-black">
+    <div className="relative h-[90vh] aspect-[9/19] rounded-[2.5rem] border-[3px] border-white/15 shadow-[0_0_80px_-20px_rgba(255,255,255,0.08)] overflow-hidden">
+      <div className="absolute inset-0">
+        {children}
+      </div>
+    </div>
+  </div>
+);
+
 const Editor: React.FC = () => {
   useKeyboardShortcuts();
   useResponsive();
 
   const isPreview = useStore((s) => s.isPreview);
+  const previewDevice = useStore((s) => s.previewDevice);
+
+  const isMobilePreview = isPreview && previewDevice === 'mobile';
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-[#0a0a0c] text-gray-100 font-sans relative">
@@ -38,9 +51,15 @@ const Editor: React.FC = () => {
           </>
         )}
         {isPreview && <PreviewOverlay />}
-        <div className="flex-1">
-          <SceneCanvas />
-        </div>
+        {isMobilePreview ? (
+          <MobileFrame>
+            <SceneCanvas />
+          </MobileFrame>
+        ) : (
+          <div className="flex-1">
+            <SceneCanvas />
+          </div>
+        )}
       </div>
 
       <SidebarRight />

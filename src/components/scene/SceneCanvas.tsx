@@ -96,8 +96,9 @@ export const SceneCanvas: React.FC = () => {
   const primarySelectedId = selectedIds[0] ?? null;
 
   const focusedObject = useMemo(() => {
+    if (isPreview) return null;
     return effectiveNavMode ? objects.find((o) => o.id === primarySelectedId) || null : null;
-  }, [effectiveNavMode, primarySelectedId, objects]);
+  }, [effectiveNavMode, isPreview, primarySelectedId, objects]);
 
   const getSelectedLight = useCallback(() => {
     if (!primarySelectedId) return null;
@@ -170,11 +171,16 @@ export const SceneCanvas: React.FC = () => {
   const handleSelect = useCallback(
     (id: string, multiSelect: boolean, groupSelect: boolean) => {
       if (performance.now() - dragEndTimeRef.current < 150) return;
+      const target = objects.find((o) => o.id === id);
+      const isLockedWall = target?.locked && target.type === ObjectType.PLANE && target.name.startsWith('Pared');
+      if (isLockedWall) return;
       if (groupSelect) {
-        const obj = objects.find((o) => o.id === id);
-        if (obj?.groupId) {
-          const memberIds = objects.filter((o) => o.groupId === obj.groupId).map((o) => o.id);
-          selectMultiple(memberIds);
+        if (target?.groupId) {
+          const memberIds = objects
+            .filter((o) => o.groupId === target.groupId)
+            .filter((o) => !(o.locked && o.type === ObjectType.PLANE && o.name.startsWith('Pared')))
+            .map((o) => o.id);
+          if (memberIds.length > 0) selectMultiple(memberIds);
         } else {
           selectSingle(id);
         }
@@ -281,14 +287,14 @@ export const SceneCanvas: React.FC = () => {
                   onAltClick={handleAltClick}
                   transformMode={transformMode}
                   setIsDragging={handleSetIsDragging}
-                  disableEditing={effectiveNavMode}
+                  disableEditing={isNavMode && !isPreview}
                   lightsEnabled={lightsEnabled}
                 />
               ))}
             </group>
           </ScrollNav>
 
-          {!effectiveNavMode && <FloorCatcher onFloorClick={handleFloorClick} />}
+          {(!effectiveNavMode || isPreview) && <FloorCatcher onFloorClick={handleFloorClick} />}
           {showGrid && !isPreview && <SceneGrid backgroundColor={backgroundColor} />}
           {!effectiveNavMode && (
             <SceneOrbitControls isDragging={isDragging} selectedId={primarySelectedId} />

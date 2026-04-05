@@ -2,7 +2,7 @@ import { useStore } from '@/stores/useStore';
 import type { SceneConfig, UniqueGlb } from '@/types';
 import { sanitizeGlbForPersistence } from '@/utils/scenePersistence';
 import { sha256 } from '@/utils/hash';
-import { uploadProjectJSON, uploadGLB } from './storageService';
+import { uploadProjectJSON, uploadGLB, uploadTexture } from './storageService';
 import { saveProjectMeta } from './projectService';
 
 export type SaveProgress = {
@@ -30,7 +30,8 @@ export async function saveProject(name?: string, onProgress?: ProgressCallback):
     const seen = new Map<string, { url: string; path: string }>();
 
     const blobObjects = objects.filter((o) => o.url && o.url.startsWith('blob:'));
-    const totalSteps = blobObjects.length + 2;
+    const textureObjects = objects.filter((o) => o.textureUrl && o.textureUrl.startsWith('blob:'));
+    const totalSteps = blobObjects.length + textureObjects.length + 2;
     let completedSteps = 0;
 
     for (const obj of blobObjects) {
@@ -64,12 +65,35 @@ export async function saveProject(name?: string, onProgress?: ProgressCallback):
       completedSteps++;
     }
 
+    for (const obj of textureObjects) {
+      onProgress?.({
+        percent: Math.round((completedSteps / totalSteps) * 100),
+        step: `Subiendo textura: ${obj.name}`,
+      });
+
+      try {
+        const resp = await fetch(obj.textureUrl!);
+        const blob = await resp.blob();
+        const ext = blob.type.split('/')[1] || 'png';
+        const fileName = `${obj.id}_${obj.name.replace(/[^a-zA-Z0-9._-]/g, '_')}.${ext}`;
+        const result = await uploadTexture(projectId, fileName, blob);
+        if (result.url) {
+          state.updateObject(obj.id, { textureUrl: result.url });
+        }
+      } catch (err) {
+        console.warn(`[saveProject] Error subiendo textura de ${obj.name}:`, err);
+      }
+
+      completedSteps++;
+    }
+
     onProgress?.({
       percent: Math.round((completedSteps / totalSteps) * 100),
       step: 'Subiendo configuración JSON…',
     });
 
-    const freshObjects = useStore.getState().objects;
+    const freshState = useStore.getState();
+    const freshObjects = freshState.objects;
     const meshObjects = freshObjects
       .filter((o) => !o.type.includes('light'))
       .map((o) => sanitizeGlbForPersistence(o));
@@ -81,6 +105,7 @@ export async function saveProject(name?: string, onProgress?: ProgressCallback):
       lights: freshObjects.filter((o) => o.type.includes('light')),
       objects: meshObjects,
       uniqueGlbs,
+      presenters: freshState.presenters,
     };
 
     const storageUrl = await uploadProjectJSON(projectId, config);
@@ -137,6 +162,7 @@ export async function quickSave(onProgress?: ProgressCallback): Promise<boolean>
       lights: objects.filter((o) => o.type.includes('light')),
       objects: meshObjectsQuick,
       uniqueGlbs: [],
+      presenters: state.presenters,
     };
 
     onProgress?.({ percent: 30, step: 'Subiendo configuración…' });

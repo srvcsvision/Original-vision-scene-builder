@@ -37,6 +37,7 @@ export function normalizeLoadedSceneObjects(
       ...obj,
       locked: obj.locked ?? false,
       visible: obj.visible ?? true,
+      textureUrl: obj.textureUrl?.startsWith('blob:') ? undefined : obj.textureUrl,
     };
     if (!isGlbObject(base)) return base;
 
@@ -54,13 +55,19 @@ export function normalizeLoadedSceneObjects(
   });
 }
 
-/** Al serializar a JSON: no guardar blob: en `url` (no son recuperables) */
+/** Al serializar a JSON: no guardar blob: en `url` ni `textureUrl` (no son recuperables) */
 export function sanitizeGlbForPersistence(obj: SceneObject): SceneObject {
-  if (!isGlbObject(obj)) return obj;
+  const sanitized = { ...obj };
+
+  if (sanitized.textureUrl?.startsWith('blob:')) {
+    sanitized.textureUrl = undefined;
+  }
+
+  if (!isGlbObject(obj)) return sanitized;
   const persistent =
     obj.modelUrl || (obj.url && !obj.url.startsWith('blob:') ? obj.url : undefined);
   return {
-    ...obj,
+    ...sanitized,
     url: persistent,
     modelUrl: obj.modelUrl || persistent,
   };

@@ -11,6 +11,11 @@ interface LightRendererProps {
   lightsEnabled?: boolean;
 }
 
+const FREE_TARGET_OFFSET = new THREE.Vector3(0, -1, 0);
+const _lightWorldPos = new THREE.Vector3();
+const _lightWorldQuat = new THREE.Quaternion();
+const _freeTargetPos = new THREE.Vector3();
+
 const SpotLightWithTarget: React.FC<{
   obj: SceneObject;
   shadowProps: Record<string, any>;
@@ -18,6 +23,7 @@ const SpotLightWithTarget: React.FC<{
   const spotRef = useRef<THREE.SpotLight>(null);
   const { scene } = useThree();
   const target = obj.target ?? [0, 0, 0];
+  const useFixedTarget = obj.useFixedTarget ?? false;
 
   useEffect(() => {
     if (!spotRef.current) return;
@@ -29,13 +35,22 @@ const SpotLightWithTarget: React.FC<{
   useFrame(() => {
     if (!spotRef.current) return;
     const t = spotRef.current.target;
-    t.position.set(target[0], target[1], target[2]);
+
+    if (useFixedTarget) {
+      t.position.set(target[0], target[1], target[2]);
+    } else {
+      spotRef.current.getWorldPosition(_lightWorldPos);
+      spotRef.current.parent!.getWorldQuaternion(_lightWorldQuat);
+      _freeTargetPos.copy(FREE_TARGET_OFFSET).applyQuaternion(_lightWorldQuat).add(_lightWorldPos);
+      t.position.copy(_freeTargetPos);
+    }
     t.updateMatrixWorld();
   });
 
   return (
     <spotLight
       ref={spotRef}
+      position={[0, 0, 0]}
       color={obj.color}
       intensity={obj.intensity ?? 1}
       angle={obj.angle ?? 0.52}
@@ -88,6 +103,7 @@ export const LightRenderer: React.FC<LightRendererProps> = React.memo(({ obj, sh
               target={obj.target ?? [0, 0, 0]}
               intensity={obj.intensity ?? 1}
               decay={obj.decay ?? 2}
+              useFixedTarget={obj.useFixedTarget ?? false}
             />
           )}
           {lightsEnabled && <SpotLightWithTarget obj={obj} shadowProps={shadowProps} />}

@@ -110,7 +110,40 @@ export const LightPanel: React.FC = () => {
           </div>
         )}
 
-        {hasTarget && (
+        {isSpot && (
+          <div>
+            <label className="block text-xs text-gray-400 mb-2">Modo de dirección</label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => updateObject(obj.id, { useFixedTarget: false })}
+                className={`py-2 px-3 rounded-lg text-[10px] font-bold transition-all border ${
+                  !(obj.useFixedTarget ?? false)
+                    ? 'bg-amber-500/20 border-amber-500/40 text-amber-300'
+                    : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'
+                }`}
+              >
+                Libre
+              </button>
+              <button
+                onClick={() => updateObject(obj.id, { useFixedTarget: true })}
+                className={`py-2 px-3 rounded-lg text-[10px] font-bold transition-all border ${
+                  (obj.useFixedTarget ?? false)
+                    ? 'bg-amber-500/20 border-amber-500/40 text-amber-300'
+                    : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'
+                }`}
+              >
+                Target fijo
+              </button>
+            </div>
+            <p className="text-[9px] text-gray-600 mt-1">
+              {(obj.useFixedTarget ?? false)
+                ? 'El cono apunta a una posición fija en el mundo'
+                : 'El cono sigue la rotación de la luz'}
+            </p>
+          </div>
+        )}
+
+        {hasTarget && (obj.useFixedTarget ?? false) && (
           <div>
             <label className="block text-xs text-gray-400 mb-2">Target (X, Y, Z)</label>
             <div className="grid grid-cols-3 gap-2">

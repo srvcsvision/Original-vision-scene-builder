@@ -12,6 +12,7 @@ import { GroupPanel } from '@/components/panels/GroupPanel';
 import { LockPanel } from '@/components/panels/LockPanel';
 import { MultiSelectionPanel } from '@/components/panels/MultiSelectionPanel';
 
+import { PresentersPanel } from '@/components/panels/PresentersPanel';
 import { UniqueGlbsBadge } from '@/components/panels/UniqueGlbsBadge';
 import { Settings, X, ChevronLeft } from 'lucide-react';
 
@@ -64,6 +65,7 @@ export const SidebarRight: React.FC = () => {
             ) : (
               <>
                 <SceneGlobalPanel />
+                <PresentersPanel />
                 <LockPanel />
                 <div className="text-center py-12 px-4">
                   <p className="text-gray-500 text-sm italic">

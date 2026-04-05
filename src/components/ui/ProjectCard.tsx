@@ -17,13 +17,25 @@ export const ProjectCard: React.FC<ProjectCardProps> = React.memo(({ project, on
     if (isEditing) inputRef.current?.focus();
   }, [isEditing]);
 
-  const dateStr = project.updatedAt
-    ? new Date(project.updatedAt).toLocaleDateString('es-ES', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-      })
-    : '';
+  const dateStr = (() => {
+    if (!project.updatedAt) return '';
+    const now = Date.now();
+    const diff = now - project.updatedAt;
+    const mins = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+
+    if (mins < 1) return 'Ahora';
+    if (mins < 60) return `Hace ${mins} min`;
+    if (hours < 24) return `Hace ${hours}h`;
+    if (days < 7) return `Hace ${days}d`;
+
+    return new Date(project.updatedAt).toLocaleDateString('es-ES', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
+  })();
 
   const handleStartEdit = (e: React.MouseEvent) => {
     e.stopPropagation();

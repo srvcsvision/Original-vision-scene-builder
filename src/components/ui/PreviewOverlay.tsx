@@ -1,6 +1,6 @@
 import React from 'react';
 import { useStore } from '@/stores/useStore';
-import { EyeOff, Maximize, Pen, Camera, Film, Music } from 'lucide-react';
+import { EyeOff, Maximize, Pen, Camera, Film, Music, Image, Monitor, Smartphone } from 'lucide-react';
 
 export const PreviewOverlay: React.FC = () => {
   const isPreview = useStore((s) => s.isPreview);
@@ -11,19 +11,22 @@ export const PreviewOverlay: React.FC = () => {
   const setActiveWallIndex = useStore((s) => s.setActiveWallIndex);
   const isMobile = useStore((s) => s.isMobile);
   const objects = useStore((s) => s.objects);
+  const previewDevice = useStore((s) => s.previewDevice);
+  const setPreviewDevice = useStore((s) => s.setPreviewDevice);
 
   if (!isPreview) return null;
 
   const walls = objects.filter((o) => o.name.includes('Pared'));
   const wallNames = walls.length > 0
     ? walls.map((w) => w.name.replace('Pared ', ''))
-    : ['1', '2', '3', '4'];
+    : ['1', '2', '3', '4', '5'];
 
   const tabs = [
     { id: 0, icon: <Pen size={isMobile ? 20 : 28} />, label: wallNames[0] || '1' },
     { id: 1, icon: <Camera size={isMobile ? 20 : 28} />, label: wallNames[1] || '2' },
     { id: 2, icon: <Film size={isMobile ? 20 : 28} />, label: wallNames[2] || '3' },
     { id: 3, icon: <Music size={isMobile ? 20 : 28} />, label: wallNames[3] || '4' },
+    { id: 4, icon: <Image size={isMobile ? 20 : 28} />, label: wallNames[4] || '5' },
   ];
 
   const itemWidth = isMobile ? 64 : 110;
@@ -46,6 +49,30 @@ export const PreviewOverlay: React.FC = () => {
         >
           <Maximize size={14} /> {fov}° Vision
         </button>
+
+        <div className="flex items-center bg-black/40 backdrop-blur-xl border border-white/10 rounded-full pointer-events-auto shadow-2xl overflow-hidden">
+          <button
+            onClick={() => setPreviewDevice('web')}
+            className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 text-[9px] sm:text-[10px] font-bold uppercase tracking-widest transition-all ${
+              previewDevice === 'web'
+                ? 'text-emerald-400 bg-white/10'
+                : 'text-gray-500 hover:text-gray-300'
+            }`}
+          >
+            <Monitor size={14} /> Web
+          </button>
+          <div className="w-px h-5 bg-white/10" />
+          <button
+            onClick={() => setPreviewDevice('mobile')}
+            className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 text-[9px] sm:text-[10px] font-bold uppercase tracking-widest transition-all ${
+              previewDevice === 'mobile'
+                ? 'text-emerald-400 bg-white/10'
+                : 'text-gray-500 hover:text-gray-300'
+            }`}
+          >
+            <Smartphone size={14} /> Mobile
+          </button>
+        </div>
       </div>
 
       <div className="fixed bottom-6 sm:bottom-10 left-1/2 -translate-x-1/2 bg-[#f5f2eb] p-2 rounded-full flex items-center gap-2 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.5)] z-50 animate-in fade-in slide-in-from-bottom-10 duration-1000 max-w-[95vw]">

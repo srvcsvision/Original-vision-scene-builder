@@ -5,9 +5,18 @@ import * as THREE from 'three';
 import { ObjectType } from '@/types';
 import type { SceneObject } from '@/types';
 import { useStore } from '@/stores/useStore';
-import { TOTAL_WALLS } from '@/constants/defaults';
-
-const VIEW_DISTANCE = 5;
+import {
+  TOTAL_WALLS,
+  NAV_FOV,
+  NAV_NEAR,
+  NAV_FAR,
+  CAMERA_BASE_Y,
+  CAMERA_Z,
+  WALL_Z,
+  CAMERA_Y_OFFSET_PORTRAIT,
+  CAMERA_Y_OFFSET_LANDSCAPE,
+  CAMERA_LOOK_DOWN_OFFSET,
+} from '@/constants/defaults';
 
 interface AdaptiveCameraProps {
   isNavMode: boolean;
@@ -18,13 +27,30 @@ export const AdaptiveCamera: React.FC<AdaptiveCameraProps> = ({ isNavMode, userF
   const { size, camera } = useThree();
 
   useEffect(() => {
-    const aspect = size.width / size.height;
-    const baseFov = aspect < 1.0 ? userFov + 15 : userFov;
-    (camera as THREE.PerspectiveCamera).fov = baseFov;
-    camera.updateProjectionMatrix();
-  }, [size, camera, userFov]);
+    const cam = camera as THREE.PerspectiveCamera;
+    if (isNavMode) {
+      cam.fov = NAV_FOV;
+      cam.near = NAV_NEAR;
+      cam.far = NAV_FAR;
+    } else {
+      const aspect = size.width / size.height;
+      cam.fov = aspect < 1.0 ? userFov + 15 : userFov;
+    }
+    cam.updateProjectionMatrix();
+  }, [size, camera, userFov, isNavMode]);
 
-  return <PerspectiveCamera makeDefault position={isNavMode ? [0, 5, 0] : [8, 8, 8]} />;
+  const initialY = isNavMode ? CAMERA_BASE_Y + CAMERA_Y_OFFSET_LANDSCAPE : 8;
+  const initialZ = isNavMode ? CAMERA_Z : 8;
+
+  return (
+    <PerspectiveCamera
+      makeDefault
+      position={isNavMode ? [0, initialY, initialZ] : [8, 8, 8]}
+      near={isNavMode ? NAV_NEAR : 0.1}
+      far={isNavMode ? NAV_FAR : 1000}
+      fov={isNavMode ? NAV_FOV : userFov}
+    />
+  );
 };
 
 interface CameraRigProps {
@@ -64,6 +90,10 @@ export const CameraRig: React.FC<CameraRigProps> = ({ isNavMode, activeIndex, on
   useFrame((state) => {
     if (!isNavMode) return;
 
+    const aspect = state.size.width / state.size.height;
+    const yOffset = aspect < 1.0 ? CAMERA_Y_OFFSET_PORTRAIT : CAMERA_Y_OFFSET_LANDSCAPE;
+    const camY = CAMERA_BASE_Y + yOffset;
+
     if (focusedObject) {
       const objPos = new THREE.Vector3(...focusedObject.transform.position);
       const objRot = new THREE.Euler(...focusedObject.transform.rotation);
@@ -85,16 +115,13 @@ export const CameraRig: React.FC<CameraRigProps> = ({ isNavMode, activeIndex, on
       const wallObj = walls[Math.min(currentWallIndex, walls.length - 1)];
       if (!wallObj) return;
 
-      const wallCenter = new THREE.Vector3(...wallObj.transform.position);
-      const wallRot = new THREE.Euler(...wallObj.transform.rotation);
-      const normal = new THREE.Vector3(0, 0, 1).applyEuler(wallRot);
+      const wallX = wallObj.transform.position[0];
 
-      const targetPos = wallCenter.clone().add(normal.clone().multiplyScalar(VIEW_DISTANCE));
-      targetPos.y = wallCenter.y;
+      const targetPos = new THREE.Vector3(wallX, camY, CAMERA_Z);
+      const lookTarget = new THREE.Vector3(wallX, camY - CAMERA_LOOK_DOWN_OFFSET, WALL_Z);
 
       state.camera.position.lerp(targetPos, 0.15);
 
-      const lookTarget = wallCenter.clone();
       const tempCam = state.camera.clone();
       tempCam.lookAt(lookTarget);
       state.camera.quaternion.slerp(tempCam.quaternion, 0.15);

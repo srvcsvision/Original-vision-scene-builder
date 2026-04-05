@@ -55,6 +55,50 @@ export async function uploadGLB(
   }
 }
 
+export async function uploadTexture(
+  projectId: string,
+  fileName: string,
+  blob: Blob
+): Promise<{ url: string; path: string }> {
+  try {
+    const ready = await ensureFirebase();
+    if (!ready) return { url: '', path: '' };
+    const storage = getStorageRef();
+    if (!storage) return { url: '', path: '' };
+
+    const path = `projects/${projectId}/textures/${fileName}`;
+    const texRef = ref(storage, path);
+    await uploadBytes(texRef, blob);
+    const url = await getDownloadURL(texRef);
+    return { url, path };
+  } catch (err) {
+    console.error('Error uploading texture:', err);
+    return { url: '', path: '' };
+  }
+}
+
+export async function uploadPresenterImage(
+  projectId: string,
+  fileName: string,
+  blob: Blob
+): Promise<{ url: string; path: string }> {
+  try {
+    const ready = await ensureFirebase();
+    if (!ready) return { url: '', path: '' };
+    const storage = getStorageRef();
+    if (!storage) return { url: '', path: '' };
+
+    const path = `projects/${projectId}/presenters/${fileName}`;
+    const imgRef = ref(storage, path);
+    await uploadBytes(imgRef, blob);
+    const url = await getDownloadURL(imgRef);
+    return { url, path };
+  } catch (err) {
+    console.error('Error uploading presenter image:', err);
+    return { url: '', path: '' };
+  }
+}
+
 export async function deleteStorageFile(path: string): Promise<void> {
   try {
     const ready = await ensureFirebase();

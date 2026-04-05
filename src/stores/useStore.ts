@@ -6,8 +6,9 @@ import { createObjectsSlice, type ObjectsSlice } from './slices/objectsSlice';
 import { createHistorySlice, type HistorySlice } from './slices/historySlice';
 import { createUiSlice, type UiSlice } from './slices/uiSlice';
 import { createClipboardSlice, type ClipboardSlice } from './slices/clipboardSlice';
+import { createPresenterSlice, type PresenterSlice } from './slices/presenterSlice';
 
-export type StoreState = ProjectSlice & SceneSlice & ObjectsSlice & HistorySlice & UiSlice & ClipboardSlice;
+export type StoreState = ProjectSlice & SceneSlice & ObjectsSlice & HistorySlice & UiSlice & ClipboardSlice & PresenterSlice;
 
 export const useStore = create<StoreState>()(
   immer((...a) => ({
@@ -17,6 +18,7 @@ export const useStore = create<StoreState>()(
     ...createHistorySlice(...a),
     ...createUiSlice(...a),
     ...createClipboardSlice(...a),
+    ...createPresenterSlice(...a),
   }))
 );
 

@@ -2,6 +2,8 @@ import { StateCreator } from 'zustand';
 import type { TransformMode } from '../../types';
 import { DEFAULT_FOV } from '../../constants/defaults';
 
+export type PreviewDevice = 'web' | 'mobile';
+
 export interface UiSlice {
   isSidebarOpen: boolean;
   isPropsOpen: boolean;
@@ -13,6 +15,7 @@ export interface UiSlice {
   activeWallIndex: number;
   activeModalObjectId: string | null;
   showVideo: boolean;
+  previewDevice: PreviewDevice;
 
   setIsSidebarOpen: (val: boolean) => void;
   setIsPropsOpen: (val: boolean) => void;
@@ -25,6 +28,7 @@ export interface UiSlice {
   setActiveWallIndex: (idx: number) => void;
   setActiveModalObjectId: (id: string | null) => void;
   setShowVideo: (val: boolean) => void;
+  setPreviewDevice: (device: PreviewDevice) => void;
   enterPreview: () => void;
   exitPreview: () => void;
 }
@@ -40,6 +44,7 @@ export const createUiSlice: StateCreator<UiSlice, [['zustand/immer', never]], []
   activeWallIndex: 0,
   activeModalObjectId: null,
   showVideo: false,
+  previewDevice: 'web',
 
   setIsSidebarOpen: (val) => set((s) => { s.isSidebarOpen = val; }),
   setIsPropsOpen: (val) => set((s) => { s.isPropsOpen = val; }),
@@ -56,6 +61,7 @@ export const createUiSlice: StateCreator<UiSlice, [['zustand/immer', never]], []
   setActiveWallIndex: (idx) => set((s) => { s.activeWallIndex = idx; }),
   setActiveModalObjectId: (id) => set((s) => { s.activeModalObjectId = id; }),
   setShowVideo: (val) => set((s) => { s.showVideo = val; }),
+  setPreviewDevice: (device) => set((s) => { s.previewDevice = device; }),
   enterPreview: () => set((s) => {
     s.isPreview = true;
     s.isNavMode = true;
@@ -63,6 +69,7 @@ export const createUiSlice: StateCreator<UiSlice, [['zustand/immer', never]], []
     s.isPropsOpen = false;
     s.activeModalObjectId = null;
     s.showVideo = false;
+    s.previewDevice = 'web';
   }),
   exitPreview: () => set((s) => {
     s.isPreview = false;

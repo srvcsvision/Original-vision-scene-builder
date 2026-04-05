@@ -20,11 +20,15 @@ const getIcon = (type: ObjectType) => {
 };
 
 export const SceneHierarchyItem: React.FC<SceneHierarchyItemProps> = React.memo(
-  ({ obj, isSelected, onSelect, onDelete, onToggleVisibility, onToggleLock }) => (
+  ({ obj, isSelected, onSelect, onDelete, onToggleVisibility, onToggleLock }) => {
+    const isLockedWall = obj.locked && obj.type === ObjectType.PLANE && obj.name.startsWith('Pared');
+    return (
     <div
-      onClick={(e) => onSelect(obj.id, e.metaKey || e.ctrlKey)}
-      className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-all flex items-center gap-2 group cursor-pointer ${
-        isSelected ? 'bg-white text-black' : 'hover:bg-white/5 text-gray-400'
+      onClick={(e) => { if (!isLockedWall) onSelect(obj.id, e.metaKey || e.ctrlKey); }}
+      className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-all flex items-center gap-2 group ${
+        isLockedWall
+          ? 'cursor-default opacity-60'
+          : isSelected ? 'bg-white text-black cursor-pointer' : 'hover:bg-white/5 text-gray-400 cursor-pointer'
       }`}
     >
       {getIcon(obj.type)}
@@ -59,7 +63,8 @@ export const SceneHierarchyItem: React.FC<SceneHierarchyItemProps> = React.memo(
         </button>
       </div>
     </div>
-  )
+    );
+  }
 );
 
 SceneHierarchyItem.displayName = 'SceneHierarchyItem';
